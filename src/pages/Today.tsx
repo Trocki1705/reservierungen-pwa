@@ -246,10 +246,11 @@ export default function Today() {
 
             return (
               <tr
-                key={r.id}
-                style={{ cursor: "pointer" }}
-                onClick={() => openReservation(r)}
-              >
+				  key={r.id}
+				  className={r.status === "arrived" ? "row-arrived" : ""}
+				  style={{ cursor: "pointer" }}
+				  onClick={() => openReservation(r)}
+				>
                 <td>{formatHHMM(new Date(r.start_time))}</td>
                 <td>
                   <div style={{ fontWeight: 700 }}>{r.guest_name}</div>
