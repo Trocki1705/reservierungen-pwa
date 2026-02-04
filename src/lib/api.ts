@@ -105,11 +105,15 @@ export async function createReservationSafe(input: {
   if (error) throw error;
   return data as ReservationRow;
 }
-export async function updateReservation(id: string, patch: Partial<{
-  status: string;
-  table_id: string | null;
-  notes: string | null;
-}>) {
+export async function updateReservation(
+  id: string,
+  patch: Partial<{
+    status: string;
+    table_id: string | null;
+    area_id: string;
+    notes: string | null;
+  }>
+) {
   const { data, error } = await supabase
     .from("reservations")
     .update(patch)

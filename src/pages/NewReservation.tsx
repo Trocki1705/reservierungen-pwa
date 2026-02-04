@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { createReservationSafe, fetchAreas, rpcFindFreeTables } from "../lib/api";
 import type { Area, TableRow } from "../lib/types";
-import { BUFFER_MINUTES, DEFAULT_DURATION, SLOT_MINUTES, fitsServiceWindows, formatHHMM, generateSlotsForDay } from "../lib/settings";
+import {
+  BUFFER_MINUTES,
+  DEFAULT_DURATION,
+  SLOT_MINUTES,
+  fitsServiceWindows,
+  formatHHMM,
+  generateSlotsForDay,
+  toDateInputValue,
+  fromDateInputValue,
+} from "../lib/settings";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toDateInputValue, fromDateInputValue } from "../lib/settings";
 
 export default function NewReservation() {
   const nav = useNavigate();
@@ -19,7 +27,9 @@ export default function NewReservation() {
   const [partySize, setPartySize] = useState(2);
   const [notes, setNotes] = useState("");
 
-  const [areaId, setAreaId] = useState("");
+  // Bereich ist optional ("" = egal / später)
+  const [areaId, setAreaId] = useState<string>("");
+
   const [day, setDay] = useState<Date>(() => new Date());
   const slots = useMemo(() => generateSlotsForDay(day, SLOT_MINUTES), [day]);
   const [slotISO, setSlotISO] = useState<string>(() => new Date().toISOString());
@@ -34,12 +44,15 @@ export default function NewReservation() {
   const [ok, setOk] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchAreas().then(a => {
-      setAreas(a);
-      const first = a[0]?.id ?? "";
-      setAreaId(preAreaId || first);
-      setSelectedTableId(preTableId || "");
-    }).catch(e => setErr(String(e.message ?? e)));
+    fetchAreas()
+      .then((a) => {
+        setAreas(a);
+        // Bereich optional lassen – nur übernehmen, wenn über Tischplan/Link vorgegeben
+        setAreaId(preAreaId || "");
+        // Tisch vorwählen, wenn über Tischplan gekommen
+        setSelectedTableId(preTableId || "");
+      })
+      .catch((e) => setErr(String(e.message ?? e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -49,32 +62,62 @@ export default function NewReservation() {
   }, [slots]);
 
   async function checkAvailability() {
-    setErr(null); setOk(null);
-    if (!areaId) return setErr("Bitte Bereich auswählen.");
+    setErr(null);
+    setOk(null);
+
     const start = new Date(slotISO);
 
     if (!fitsServiceWindows(start, duration, BUFFER_MINUTES)) {
       return setErr("Zeit liegt außerhalb der Öffnungszeiten (inkl. Dauer/Puffer).");
     }
 
+    if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
+
     setLoading(true);
     try {
-      const free = await rpcFindFreeTables({
-        areaId,
-        newStartISO: start.toISOString(),
-        partySize,
-        durationMinutes: duration,
-        bufferMinutes: BUFFER_MINUTES
-      });
+      let free: TableRow[] = [];
+
+      if (areaId) {
+        // Nur gewählter Bereich
+        free = await rpcFindFreeTables({
+          areaId,
+          newStartISO: start.toISOString(),
+          partySize,
+          durationMinutes: duration,
+          bufferMinutes: BUFFER_MINUTES,
+        });
+      } else {
+        // Bereich egal → alle Bereiche durchsuchen
+        const all = await Promise.all(
+          areas.map((a) =>
+            rpcFindFreeTables({
+              areaId: a.id,
+              newStartISO: start.toISOString(),
+              partySize,
+              durationMinutes: duration,
+              bufferMinutes: BUFFER_MINUTES,
+            }).catch(() => [])
+          )
+        );
+        free = all.flat();
+        free.sort((a, b) => (a.seats - b.seats) || (a.table_number - b.table_number));
+      }
+
       setFreeTables(free);
 
+      // Wenn Tisch vorgegeben war (z.B. aus Tischplan), nur übernehmen wenn er wirklich frei ist
       if (selectedTableId) {
-        if (!free.some(t => t.id === selectedTableId)) setSelectedTableId(free[0]?.id ?? "");
+        const okTable = free.some((t) => t.id === selectedTableId);
+        if (!okTable) setSelectedTableId(free[0]?.id ?? "");
       } else {
         setSelectedTableId(free[0]?.id ?? "");
       }
 
-      setOk(free.length ? `Freie Tische gefunden: ${free.length}. Vorschlag: kleinster passender Tisch.` : "Keine freien passenden Tische.");
+      setOk(
+        free.length
+          ? `Freie Tische gefunden: ${free.length}. Vorschlag: kleinster passender Tisch.`
+          : "Keine freien passenden Tische."
+      );
     } catch (e: any) {
       setErr(String(e?.message ?? e));
     } finally {
@@ -83,14 +126,27 @@ export default function NewReservation() {
   }
 
   async function save() {
-    setErr(null); setOk(null);
+    setErr(null);
+    setOk(null);
+
     if (!guestName.trim()) return setErr("Name fehlt.");
-    if (!areaId) return setErr("Bereich fehlt.");
 
     const start = new Date(slotISO);
+
     if (!fitsServiceWindows(start, duration, BUFFER_MINUTES)) {
       return setErr("Zeit liegt außerhalb der Öffnungszeiten (inkl. Dauer/Puffer).");
     }
+
+    if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
+
+    // Bereich automatisch bestimmen:
+    // 1) Wenn Tisch gewählt: Bereich vom Tisch
+    // 2) Sonst wenn Bereich ausgewählt: dieser
+    // 3) Sonst Default: erster Bereich (Restaurant)
+    const chosen = freeTables.find((t) => t.id === selectedTableId);
+    const finalAreaId = chosen?.area_id || areaId || areas[0]?.id;
+
+    if (!finalAreaId) return setErr("Kein Bereich verfügbar (finalAreaId leer).");
 
     setLoading(true);
     try {
@@ -101,9 +157,10 @@ export default function NewReservation() {
         start_time_iso: start.toISOString(),
         duration_minutes: duration,
         notes: notes.trim() || undefined,
-        area_id: areaId,
-        table_id: selectedTableId || null
+        area_id: finalAreaId,
+        table_id: selectedTableId || null,
       });
+
       setOk("Gespeichert ✅");
       setTimeout(() => nav("/"), 400);
     } catch (e: any) {
@@ -116,29 +173,36 @@ export default function NewReservation() {
   return (
     <div className="card">
       <div style={{ fontSize: 22, fontWeight: 800 }}>Neue Reservierung</div>
-      <div className="small">Öffnungszeiten: 11:30–14:00 & 17:00–22:30 · Raster {SLOT_MINUTES}min · Dauer {duration}min · Puffer {BUFFER_MINUTES}min</div>
+      <div className="small">
+        Öffnungszeiten: 11:30–14:00 & 17:00–22:30 · Raster {SLOT_MINUTES}min · Dauer {duration}min · Puffer {BUFFER_MINUTES}min
+      </div>
 
       <hr />
 
       <div className="row">
         <div>
           <label className="small">Name *</label>
-          <input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="z.B. Müller" />
+          <input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="z.B. Müller" />
         </div>
         <div>
           <label className="small">Telefon</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="optional" />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="optional" />
         </div>
       </div>
 
       <div className="row" style={{ marginTop: 12 }}>
         <div>
           <label className="small">Personen</label>
-          <input type="number" min={1} value={partySize} onChange={e => setPartySize(Math.max(1, Number(e.target.value || 1)))} />
+          <input
+            type="number"
+            min={1}
+            value={partySize}
+            onChange={(e) => setPartySize(Math.max(1, Number(e.target.value || 1)))}
+          />
         </div>
         <div>
           <label className="small">Dauer (Minuten)</label>
-          <select value={duration} onChange={e => setDuration(Number(e.target.value))}>
+          <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
             <option value={90}>90</option>
             <option value={120}>120</option>
             <option value={150}>150</option>
@@ -146,10 +210,16 @@ export default function NewReservation() {
           </select>
         </div>
         <div>
-          <label className="small">Bereich</label>
-          <select value={areaId} onChange={e => setAreaId(e.target.value)}>
-            {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          <label className="small">Bereich (optional)</label>
+          <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
+            <option value="">(egal / später)</option>
+            {areas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
           </select>
+          <div className="small">Wenn du keinen Bereich wählst, wird bei Tischwahl automatisch entschieden.</div>
         </div>
       </div>
 
@@ -159,23 +229,29 @@ export default function NewReservation() {
           <input
             type="date"
             value={toDateInputValue(day)}
-			onChange={e => setDay(fromDateInputValue(e.target.value))}
+            onChange={(e) => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
         <div>
           <label className="small">Uhrzeit</label>
-          <select value={slotISO} onChange={e => setSlotISO(e.target.value)}>
-            {slots.map(s => (
-              <option key={s.toISOString()} value={s.toISOString()}>{formatHHMM(s)}</option>
+          <select value={slotISO} onChange={(e) => setSlotISO(e.target.value)}>
+            {slots.map((s) => (
+              <option key={s.toISOString()} value={s.toISOString()}>
+                {formatHHMM(s)}
+              </option>
             ))}
           </select>
-          <div className="small">Nur Slots innerhalb der Servicezeiten.</div>
+          <div className="small">Slots innerhalb der Servicezeiten.</div>
         </div>
       </div>
 
       <div style={{ marginTop: 12 }}>
         <label className="small">Notiz</label>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="z.B. Kinderstuhl, Allergie..." />
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="z.B. Kinderstuhl, Allergie, ruhiger Tisch..."
+        />
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -195,15 +271,44 @@ export default function NewReservation() {
       <div className="row">
         <div>
           <label className="small">Tisch (Vorschlag = kleinster passender)</label>
-          <select value={selectedTableId} onChange={e => setSelectedTableId(e.target.value)}>
+          <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
             <option value="">(ohne Tisch)</option>
-            {freeTables.map(t => (
+            {freeTables.map((t) => (
               <option key={t.id} value={t.id}>
                 Tisch {t.table_number} · {t.seats} Plätze
               </option>
             ))}
           </select>
-          <div className="small">Vom Tischplan kommend ist der Tisch vorausgewählt.</div>
+          <div className="small">
+            Tipp: Ohne Bereich sucht die App beim Button „Freie Tische anzeigen“ automatisch über alle Bereiche.
+          </div>
+        </div>
+
+        <div>
+          <div className="small" style={{ marginBottom: 8 }}>Freie Tische</div>
+          <div
+            className="card"
+            style={{ padding: 12, maxHeight: 180, overflow: "auto", boxShadow: "none", border: "1px solid #edf0f4" }}
+          >
+            {freeTables.length === 0 ? (
+              <div className="small">Noch keine Abfrage oder keine freien Tische.</div>
+            ) : (
+              freeTables.map((t) => (
+                <div
+                  key={t.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "6px 0",
+                    borderBottom: "1px solid #f1f3f6",
+                  }}
+                >
+                  <div style={{ fontWeight: 700 }}>Tisch {t.table_number}</div>
+                  <div className="small">{t.seats} Plätze</div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

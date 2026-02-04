@@ -128,9 +128,12 @@ export default function Today() {
     if (!openRow) return;
     setLoading(true);
     try {
-      await updateReservation(openRow.id, {
-        table_id: editTableId || null,
-      });
+      
+	  const chosen = areaTables.find(t => t.id === editTableId);
+		await updateReservation(openRow.id, {
+		  table_id: editTableId || null,
+		  area_id: chosen ? chosen.area_id : openRow.area_id
+		});
       await load();
       closeModal();
     } finally {
