@@ -52,3 +52,19 @@ tr.row-arrived {
 tr.row-arrived td {
   border-bottom-color: #cdeed6;
 }
+tr.row-cancelled,
+tr.row-no-show {
+  background: #f3f4f6;   /* hellgrau */
+  color: #6b7280;        /* grau */
+}
+
+tr.row-cancelled td,
+tr.row-no-show td {
+  border-bottom-color: #e5e7eb;
+}
+
+tr.row-cancelled .badge,
+tr.row-no-show .badge {
+  opacity: 0.85;
+}
+

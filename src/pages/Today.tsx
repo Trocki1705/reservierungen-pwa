@@ -43,6 +43,10 @@ export default function Today() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Toggle: stornierte / no-show anzeigen
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [showNoShow, setShowNoShow] = useState(false);
+
   // Modal/Edit State
   const [openId, setOpenId] = useState<string>("");
   const [openRow, setOpenRow] = useState<ReservationWithJoins | null>(null);
@@ -77,16 +81,37 @@ export default function Today() {
     const s = timeOnDate(day, win.start);
     const e = timeOnDate(day, win.end);
 
-    return rows.filter((r) => {
+    const base = rows.filter((r) => {
       const st = new Date(r.start_time);
       const inService = st >= s && st <= e;
+
       const matches =
         !q.trim() ||
         r.guest_name.toLowerCase().includes(q.toLowerCase()) ||
         (r.phone ?? "").toLowerCase().includes(q.toLowerCase());
-      return inService && matches;
+
+      const statusOk =
+        (r.status !== "cancelled" || showCancelled) &&
+        (r.status !== "no_show" || showNoShow);
+
+      return inService && matches && statusOk;
     });
-  }, [rows, q, service, day]);
+
+    const rank = (status: string) => {
+      if (status === "confirmed" || status === "requested") return 0; // offen
+      if (status === "arrived") return 1; // angekommen
+      if (status === "cancelled") return 2; // storniert
+      if (status === "no_show") return 3; // no-show
+      return 9;
+    };
+
+    return base.sort((a, b) => {
+      const ra = rank(a.status);
+      const rb = rank(b.status);
+      if (ra !== rb) return ra - rb;
+      return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+    });
+  }, [rows, q, service, day, showCancelled, showNoShow]);
 
   async function openReservation(r: ReservationWithJoins) {
     setOpenId(r.id);
@@ -203,10 +228,33 @@ export default function Today() {
         </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginTop: 12,
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <button onClick={load} disabled={loading}>
           {loading ? "Lade…" : "Aktualisieren"}
         </button>
+
+        <button
+          onClick={() => setShowCancelled((v) => !v)}
+          className={showCancelled ? "primary" : ""}
+        >
+          Stornos {showCancelled ? "an" : "aus"}
+        </button>
+
+        <button
+          onClick={() => setShowNoShow((v) => !v)}
+          className={showNoShow ? "primary" : ""}
+        >
+          No-show {showNoShow ? "an" : "aus"}
+        </button>
+
         <span className="small">
           Tipp: Tippe auf eine Reservierung, um Status oder Tisch zu ändern.
         </span>
@@ -238,19 +286,29 @@ export default function Today() {
               </td>
             </tr>
           )}
+
           {filtered.map((r) => {
             const b = statusBadge(r.status);
             const t = r.table?.table_number;
             const area = r.area?.name;
             const tableLabel = t ? `Tisch ${t}${area ? " · " + area : ""}` : "—";
 
+            const rowClass =
+              r.status === "arrived"
+                ? "row-arrived"
+                : r.status === "cancelled"
+                ? "row-cancelled"
+                : r.status === "no_show"
+                ? "row-no-show"
+                : "";
+
             return (
               <tr
-				  key={r.id}
-				  className={r.status === "arrived" ? "row-arrived" : ""}
-				  style={{ cursor: "pointer" }}
-				  onClick={() => openReservation(r)}
-				>
+                key={r.id}
+                className={rowClass}
+                style={{ cursor: "pointer" }}
+                onClick={() => openReservation(r)}
+              >
                 <td>{formatHHMM(new Date(r.start_time))}</td>
                 <td>
                   <div style={{ fontWeight: 700 }}>{r.guest_name}</div>
@@ -299,7 +357,7 @@ export default function Today() {
             <hr />
 
             <div>
-              <div className="small">Tisch wechseln</div>
+              <div className="small">Tisch festlegen / wechseln</div>
               <select
                 value={editTableId}
                 onChange={(e) => setEditTableId(e.target.value)}
