@@ -67,4 +67,11 @@ tr.row-cancelled .badge,
 tr.row-no-show .badge {
   opacity: 0.85;
 }
+tr.row-arrived {
+  background: #eefbf2;
+}
+
+tr.row-cancelled {
+  background: #fde8e8;
+}
 

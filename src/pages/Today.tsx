@@ -43,11 +43,7 @@ export default function Today() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Toggle: stornierte / no-show anzeigen
-  const [showCancelled, setShowCancelled] = useState(false);
-  const [showNoShow, setShowNoShow] = useState(false);
-
-  // Modal/Edit State
+  // Modal
   const [openId, setOpenId] = useState<string>("");
   const [openRow, setOpenRow] = useState<ReservationWithJoins | null>(null);
   const [areaTables, setAreaTables] = useState<TableRow[]>([]);
@@ -77,11 +73,13 @@ export default function Today() {
   }, [areaId, day]);
 
   const filtered = useMemo(() => {
-    const win = SERVICE_WINDOWS.find((w) => w.name === service) ?? SERVICE_WINDOWS[1];
+    const win =
+      SERVICE_WINDOWS.find((w) => w.name === service) ??
+      SERVICE_WINDOWS[1];
     const s = timeOnDate(day, win.start);
     const e = timeOnDate(day, win.end);
 
-    const base = rows.filter((r) => {
+    return rows.filter((r) => {
       const st = new Date(r.start_time);
       const inService = st >= s && st <= e;
 
@@ -90,28 +88,9 @@ export default function Today() {
         r.guest_name.toLowerCase().includes(q.toLowerCase()) ||
         (r.phone ?? "").toLowerCase().includes(q.toLowerCase());
 
-      const statusOk =
-        (r.status !== "cancelled" || showCancelled) &&
-        (r.status !== "no_show" || showNoShow);
-
-      return inService && matches && statusOk;
+      return inService && matches;
     });
-
-    const rank = (status: string) => {
-      if (status === "confirmed" || status === "requested") return 0; // offen
-      if (status === "arrived") return 1; // angekommen
-      if (status === "cancelled") return 2; // storniert
-      if (status === "no_show") return 3; // no-show
-      return 9;
-    };
-
-    return base.sort((a, b) => {
-      const ra = rank(a.status);
-      const rb = rank(b.status);
-      if (ra !== rb) return ra - rb;
-      return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
-    });
-  }, [rows, q, service, day, showCancelled, showNoShow]);
+  }, [rows, q, service, day]);
 
   async function openReservation(r: ReservationWithJoins) {
     setOpenId(r.id);
@@ -136,13 +115,10 @@ export default function Today() {
   async function setStatus(newStatus: ReservationWithJoins["status"]) {
     if (!openRow) return;
     setLoading(true);
-    setErr(null);
     try {
       await updateReservation(openRow.id, { status: newStatus });
       await load();
       closeModal();
-    } catch (e: any) {
-      setErr(String(e?.message ?? e));
     } finally {
       setLoading(false);
     }
@@ -151,13 +127,12 @@ export default function Today() {
   async function saveTable() {
     if (!openRow) return;
     setLoading(true);
-    setErr(null);
     try {
-      await updateReservation(openRow.id, { table_id: editTableId || null });
+      await updateReservation(openRow.id, {
+        table_id: editTableId || null,
+      });
       await load();
       closeModal();
-    } catch (e: any) {
-      setErr(String(e?.message ?? e));
     } finally {
       setLoading(false);
     }
@@ -165,20 +140,12 @@ export default function Today() {
 
   return (
     <div className="card">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
           <div className="small">{formatDateDE(day)}</div>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={() => setService("Mittag")}
             className={service === "Mittag" ? "primary" : ""}
@@ -219,87 +186,37 @@ export default function Today() {
         </div>
 
         <div>
-          <label className="small">Suche (Name/Telefon)</label>
+          <label className="small">Suche</label>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="z.B. Müller oder 017..."
+            placeholder="Name oder Telefon"
           />
         </div>
       </div>
 
-      <div
-        style={{
-          marginTop: 12,
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <button onClick={load} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
-        </button>
-
-        <button
-          onClick={() => setShowCancelled((v) => !v)}
-          className={showCancelled ? "primary" : ""}
-        >
-          Stornos {showCancelled ? "an" : "aus"}
-        </button>
-
-        <button
-          onClick={() => setShowNoShow((v) => !v)}
-          className={showNoShow ? "primary" : ""}
-        >
-          No-show {showNoShow ? "an" : "aus"}
-        </button>
-
-        <span className="small">
-          Tipp: Tippe auf eine Reservierung, um Status oder Tisch zu ändern.
-        </span>
-      </div>
-
-      {err && (
-        <div style={{ marginTop: 12 }} className="badge bad">
-          Fehler: {err}
-        </div>
-      )}
+      {err && <div className="badge bad">Fehler: {err}</div>}
 
       <hr />
 
       <table className="table">
         <thead>
           <tr>
-            <th style={{ width: 90 }}>Zeit</th>
+            <th>Zeit</th>
             <th>Name</th>
-            <th style={{ width: 90 }}>Pers.</th>
-            <th style={{ width: 170 }}>Tisch</th>
-            <th style={{ width: 120 }}>Status</th>
+            <th>Pers.</th>
+            <th>Tisch</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
-          {filtered.length === 0 && (
-            <tr>
-              <td colSpan={5} className="small">
-                Keine Reservierungen im ausgewählten Zeitraum.
-              </td>
-            </tr>
-          )}
-
           {filtered.map((r) => {
             const b = statusBadge(r.status);
-            const t = r.table?.table_number;
-            const area = r.area?.name;
-            const tableLabel = t ? `Tisch ${t}${area ? " · " + area : ""}` : "—";
-
             const rowClass =
               r.status === "arrived"
                 ? "row-arrived"
                 : r.status === "cancelled"
                 ? "row-cancelled"
-                : r.status === "no_show"
-                ? "row-no-show"
                 : "";
 
             return (
@@ -311,11 +228,15 @@ export default function Today() {
               >
                 <td>{formatHHMM(new Date(r.start_time))}</td>
                 <td>
-                  <div style={{ fontWeight: 700 }}>{r.guest_name}</div>
+                  <strong>{r.guest_name}</strong>
                   <div className="small">{r.phone ?? ""}</div>
                 </td>
                 <td>{r.party_size}</td>
-                <td>{tableLabel}</td>
+                <td>
+                  {r.table
+                    ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
+                    : "—"}
+                </td>
                 <td>
                   <span className={`badge ${b.cls}`}>{b.label}</span>
                 </td>
@@ -327,58 +248,50 @@ export default function Today() {
 
       <Modal
         open={!!openId}
-        title={openRow ? `Reservierung: ${openRow.guest_name}` : "Reservierung"}
+        title={openRow ? `Reservierung: ${openRow.guest_name}` : ""}
         onClose={closeModal}
       >
         {!openRow ? null : (
           <>
             <div className="small" style={{ marginBottom: 8 }}>
-              {formatHHMM(new Date(openRow.start_time))} · {openRow.party_size} Personen
+              {formatHHMM(new Date(openRow.start_time))} ·{" "}
+              {openRow.party_size} Personen
             </div>
 
-            <div>
-              <div className="small">Status</div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
-                <button onClick={() => setStatus("confirmed")} disabled={loading}>
-                  bestätigt
-                </button>
-                <button onClick={() => setStatus("arrived")} className="primary" disabled={loading}>
-                  angekommen
-                </button>
-                <button onClick={() => setStatus("cancelled")} disabled={loading}>
-                  storniert
-                </button>
-                <button onClick={() => setStatus("no_show")} disabled={loading}>
-                  no-show
-                </button>
-              </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => setStatus("confirmed")}>
+                bestätigt
+              </button>
+              <button className="primary" onClick={() => setStatus("arrived")}>
+                angekommen
+              </button>
+              <button onClick={() => setStatus("cancelled")}>
+                storniert
+              </button>
+              <button onClick={() => setStatus("no_show")}>
+                no-show
+              </button>
             </div>
 
             <hr />
 
-            <div>
-              <div className="small">Tisch festlegen / wechseln</div>
-              <select
-                value={editTableId}
-                onChange={(e) => setEditTableId(e.target.value)}
-                style={{ marginTop: 8 }}
-              >
-                <option value="">(ohne Tisch)</option>
-                {areaTables.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    Tisch {t.table_number} · {t.seats} Plätze
-                  </option>
-                ))}
-              </select>
+            <select
+              value={editTableId}
+              onChange={(e) => setEditTableId(e.target.value)}
+            >
+              <option value="">(ohne Tisch)</option>
+              {areaTables.map((t) => (
+                <option key={t.id} value={t.id}>
+                  Tisch {t.table_number} · {t.seats} Plätze
+                </option>
+              ))}
+            </select>
 
-              <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-                <button className="primary" onClick={saveTable} disabled={loading}>
-                  Tisch speichern
-                </button>
-                <button onClick={closeModal} disabled={loading}>
-                  Abbrechen
-                </button>
-              </div>
+            <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+              <button className="primary" onClick={saveTable}>
+                Tisch speichern
+              </button>
+              <button onClick={closeModal}>Abbrechen</button>
             </div>
           </>
         )}
