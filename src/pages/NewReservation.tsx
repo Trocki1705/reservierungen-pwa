@@ -3,6 +3,7 @@ import { createReservationSafe, fetchAreas, rpcFindFreeTables } from "../lib/api
 import type { Area, TableRow } from "../lib/types";
 import { BUFFER_MINUTES, DEFAULT_DURATION, SLOT_MINUTES, fitsServiceWindows, formatHHMM, generateSlotsForDay } from "../lib/settings";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toDateInputValue, fromDateInputValue } from "../lib/settings";
 
 export default function NewReservation() {
   const nav = useNavigate();
@@ -157,13 +158,8 @@ export default function NewReservation() {
           <label className="small">Datum</label>
           <input
             type="date"
-            value={new Date(day).toISOString().slice(0,10)}
-            onChange={e => {
-              const [y,m,d] = e.target.value.split("-").map(Number);
-              const nd = new Date(day);
-              nd.setFullYear(y, m-1, d);
-              setDay(nd);
-            }}
+            value={toDateInputValue(day)}
+			onChange={e => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
         <div>

@@ -38,3 +38,16 @@ export function formatHHMM(d: Date): string {
 export function formatDateDE(d: Date): string {
   return d.toLocaleDateString("de-DE", { weekday: "short", year: "numeric", month: "2-digit", day: "2-digit" });
 }
+export function toDateInputValue(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function fromDateInputValue(v: string): Date {
+  const [y, m, d] = v.split("-").map(Number);
+  // Mittags setzen, damit es nie an DST/Timezone-Kanten kippt
+  return new Date(y, (m - 1), d, 12, 0, 0, 0);
+}
+

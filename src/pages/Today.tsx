@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchAreas, fetchTodayReservations } from "../lib/api";
 import type { Area, ReservationWithJoins } from "../lib/types";
 import { SERVICE_WINDOWS, formatDateDE, formatHHMM, timeOnDate } from "../lib/settings";
+import { toDateInputValue, fromDateInputValue } from "../lib/settings";
 
 function statusBadge(s: ReservationWithJoins["status"]) {
   switch (s) {
@@ -82,13 +83,9 @@ export default function Today() {
           <label className="small">Datum</label>
           <input
             type="date"
-            value={new Date(day).toISOString().slice(0,10)}
-            onChange={e => {
-              const [y,m,d] = e.target.value.split("-").map(Number);
-              const nd = new Date(day);
-              nd.setFullYear(y, m-1, d);
-              setDay(nd);
-            }}
+            
+			value={toDateInputValue(day)}
+			onChange={e => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
         <div>

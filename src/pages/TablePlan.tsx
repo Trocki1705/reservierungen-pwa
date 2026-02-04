@@ -3,6 +3,7 @@ import { fetchAreas, fetchReservationsForAreaDay, fetchTables } from "../lib/api
 import type { Area, ReservationWithJoins, TableRow } from "../lib/types";
 import { SERVICE_WINDOWS, formatDateDE, formatHHMM, timeOnDate } from "../lib/settings";
 import { useNavigate } from "react-router-dom";
+import { toDateInputValue, fromDateInputValue } from "../lib/settings";
 
 function isOverlapping(startA: Date, endA: Date, startB: Date, endB: Date) {
   return startA < endB && endA > startB;
@@ -98,13 +99,8 @@ export default function TablePlan() {
           <label className="small">Datum</label>
           <input
             type="date"
-            value={new Date(day).toISOString().slice(0,10)}
-            onChange={e => {
-              const [y,m,d] = e.target.value.split("-").map(Number);
-              const nd = new Date(day);
-              nd.setFullYear(y, m-1, d);
-              setDay(nd);
-            }}
+            value={toDateInputValue(day)}
+			onChange={e => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
         <div>
