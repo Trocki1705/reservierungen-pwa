@@ -24,7 +24,7 @@ export async function fetchTodayReservations(opts: { day: Date; areaId?: string 
 
   let q = supabase
     .from("reservations")
-    .select("*, area:areas(name), table:tables(table_number,seats)")
+    .select("*, area:areas!reservations_area_id_fkey(name), fallback_area:areas!reservations_fallback_area_id_fkey(name), table:tables(table_number,seats)")
     .gte("start_time", start.toISOString())
     .lt("start_time", end.toISOString())
     .order("start_time", { ascending: true });
