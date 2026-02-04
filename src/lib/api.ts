@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Area, ReservationRow, TableRow } from "./types";
+import type { Area, ReservationRow, ReservationWithJoins, TableRow } from "./types";
 
 export async function fetchAreas(): Promise<Area[]> {
   const { data, error } = await supabase.from("areas").select("*").order("sort_order", { ascending: true });
@@ -7,18 +7,24 @@ export async function fetchAreas(): Promise<Area[]> {
   return (data ?? []) as Area[];
 }
 
-export async function fetchTodayReservations(opts: {
-  day: Date;
-  areaId?: string | null;
-}): Promise<ReservationRow[]> {
-  const start = new Date(opts.day);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+export async function fetchTables(areaId: string): Promise<TableRow[]> {
+  const { data, error } = await supabase
+    .from("tables")
+    .select("*")
+    .eq("area_id", areaId)
+    .eq("active", true)
+    .order("table_number", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as TableRow[];
+}
+
+export async function fetchTodayReservations(opts: { day: Date; areaId?: string | null; }): Promise<ReservationWithJoins[]> {
+  const start = new Date(opts.day); start.setHours(0,0,0,0);
+  const end = new Date(start); end.setDate(end.getDate() + 1);
 
   let q = supabase
     .from("reservations")
-    .select("*")
+    .select("*, area:areas(name), table:tables(table_number,seats)")
     .gte("start_time", start.toISOString())
     .lt("start_time", end.toISOString())
     .order("start_time", { ascending: true });
@@ -27,16 +33,27 @@ export async function fetchTodayReservations(opts: {
 
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as ReservationRow[];
+  return (data ?? []) as ReservationWithJoins[];
 }
 
-export async function rpcFindFreeTables(args: {
-  areaId: string;
-  newStartISO: string;
-  partySize: number;
-  durationMinutes: number;
-  bufferMinutes: number;
-}): Promise<TableRow[]> {
+export async function fetchReservationsForAreaDay(opts: { day: Date; areaId: string; }): Promise<ReservationWithJoins[]> {
+  const start = new Date(opts.day); start.setHours(0,0,0,0);
+  const end = new Date(start); end.setDate(end.getDate() + 1);
+
+  const { data, error } = await supabase
+    .from("reservations")
+    .select("*, table:tables(table_number,seats)")
+    .eq("area_id", opts.areaId)
+    .gte("start_time", start.toISOString())
+    .lt("start_time", end.toISOString())
+    .in("status", ["requested","confirmed","arrived"])
+    .order("start_time", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as ReservationWithJoins[];
+}
+
+export async function rpcFindFreeTables(args: { areaId: string; newStartISO: string; partySize: number; durationMinutes: number; bufferMinutes: number; }): Promise<TableRow[]> {
   const { data, error } = await supabase.rpc("find_free_tables", {
     p_area_id: args.areaId,
     p_new_start: args.newStartISO,
@@ -57,9 +74,7 @@ export async function createReservationSafe(input: {
   notes?: string;
   area_id: string;
   table_id?: string | null;
-  fallback_area_id?: string | null;
 }) {
-  // Final check, wenn Tisch gesetzt ist
   if (input.table_id) {
     const free = await rpcFindFreeTables({
       areaId: input.area_id,
@@ -68,8 +83,7 @@ export async function createReservationSafe(input: {
       durationMinutes: input.duration_minutes,
       bufferMinutes: 15
     });
-    const ok = free.some(t => t.id === input.table_id);
-    if (!ok) throw new Error("Der gewählte Tisch ist in diesem Zeitraum nicht (mehr) frei.");
+    if (!free.some(t => t.id === input.table_id)) throw new Error("Der gewählte Tisch ist in diesem Zeitraum nicht (mehr) frei.");
   }
 
   const { data, error } = await supabase
@@ -83,8 +97,7 @@ export async function createReservationSafe(input: {
       status: "confirmed",
       notes: input.notes ?? null,
       area_id: input.area_id,
-      table_id: input.table_id ?? null,
-      fallback_area_id: input.fallback_area_id ?? null,
+      table_id: input.table_id ?? null
     }])
     .select("*")
     .single();

@@ -2,7 +2,7 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   background: #f6f7f9;
   color: #111;
 }
@@ -20,11 +20,7 @@ input, select, textarea, button {
   background: white;
 }
 textarea { min-height: 90px; resize: vertical; }
-button {
-  cursor: pointer;
-  border: 1px solid #cfd5df;
-  background: #fff;
-}
+button { cursor: pointer; border: 1px solid #cfd5df; background: #fff; }
 button.primary { background: #111; color: white; border-color: #111; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .topbar {
@@ -39,8 +35,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .badge.ok { background: #eefbf2; border-color:#cdeed6; }
 .badge.warn { background: #fff7e6; border-color:#ffe0a3; }
 .badge.bad { background: #fff0f0; border-color:#ffd0d0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.tile { border-radius: 16px; border: 1px solid #e6e9ef; padding: 12px; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,0.05); }
+.tile.busy { outline: 2px solid rgba(255, 165, 0, 0.35); }
+.tile.now { outline: 2px solid rgba(0, 0, 0, 0.5); }
+.tile h3 { margin: 0; font-size: 18px; }
+.small { font-size: 13px; color: #556; }
+.kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; background:#f1f3f6; padding: 2px 6px; border-radius: 8px; border: 1px solid #e3e7ee; }
 hr { border: none; border-top: 1px solid #edf0f4; margin: 12px 0; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #edf0f4; }
-.small { font-size: 13px; color: #556; }
-.kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; background:#f1f3f6; padding: 2px 6px; border-radius: 8px; border: 1px solid #e3e7ee; }

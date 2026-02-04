@@ -1,4 +1,3 @@
--- 1) Tabellen
 create table if not exists areas (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
@@ -34,7 +33,6 @@ create index if not exists idx_res_start_time on reservations(start_time);
 create index if not exists idx_res_area_time on reservations(area_id, start_time);
 create index if not exists idx_res_table_time on reservations(table_id, start_time);
 
--- 2) RPC: freie Tische finden
 create or replace function find_free_tables(
   p_area_id uuid,
   p_new_start timestamptz,

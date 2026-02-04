@@ -2,10 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { createReservationSafe, fetchAreas, rpcFindFreeTables } from "../lib/api";
 import type { Area, TableRow } from "../lib/types";
 import { BUFFER_MINUTES, DEFAULT_DURATION, SLOT_MINUTES, fitsServiceWindows, formatHHMM, generateSlotsForDay } from "../lib/settings";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function NewReservation() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+
+  const preAreaId = params.get("areaId") ?? "";
+  const preTableId = params.get("tableId") ?? "";
+
   const [areas, setAreas] = useState<Area[]>([]);
 
   const [guestName, setGuestName] = useState("");
@@ -16,7 +21,7 @@ export default function NewReservation() {
   const [areaId, setAreaId] = useState("");
   const [day, setDay] = useState<Date>(() => new Date());
   const slots = useMemo(() => generateSlotsForDay(day, SLOT_MINUTES), [day]);
-  const [slotISO, setSlotISO] = useState<string>(() => slots[0]?.toISOString() ?? new Date().toISOString());
+  const [slotISO, setSlotISO] = useState<string>(() => new Date().toISOString());
 
   const [duration, setDuration] = useState(DEFAULT_DURATION);
 
@@ -30,7 +35,9 @@ export default function NewReservation() {
   useEffect(() => {
     fetchAreas().then(a => {
       setAreas(a);
-      if (!areaId && a[0]) setAreaId(a[0].id);
+      const first = a[0]?.id ?? "";
+      setAreaId(preAreaId || first);
+      setSelectedTableId(preTableId || "");
     }).catch(e => setErr(String(e.message ?? e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -59,7 +66,13 @@ export default function NewReservation() {
         bufferMinutes: BUFFER_MINUTES
       });
       setFreeTables(free);
-      setSelectedTableId(free[0]?.id ?? "");
+
+      if (selectedTableId) {
+        if (!free.some(t => t.id === selectedTableId)) setSelectedTableId(free[0]?.id ?? "");
+      } else {
+        setSelectedTableId(free[0]?.id ?? "");
+      }
+
       setOk(free.length ? `Freie Tische gefunden: ${free.length}. Vorschlag: kleinster passender Tisch.` : "Keine freien passenden Tische.");
     } catch (e: any) {
       setErr(String(e?.message ?? e));
@@ -91,7 +104,6 @@ export default function NewReservation() {
         table_id: selectedTableId || null
       });
       setOk("Gespeichert ✅");
-      // kurz reset und zurück zur Heute-Liste
       setTimeout(() => nav("/"), 400);
     } catch (e: any) {
       setErr(String(e?.message ?? e));
@@ -167,7 +179,7 @@ export default function NewReservation() {
 
       <div style={{ marginTop: 12 }}>
         <label className="small">Notiz</label>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="z.B. Kinderstuhl, Allergie, ruhiger Tisch..." />
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="z.B. Kinderstuhl, Allergie..." />
       </div>
 
       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -195,22 +207,7 @@ export default function NewReservation() {
               </option>
             ))}
           </select>
-          <div className="small">Wenn du „ohne Tisch“ speicherst, kannst du später im Tischplan zuweisen (nächster Schritt).</div>
-        </div>
-        <div>
-          <div className="small" style={{ marginBottom: 8 }}>Freie Tische</div>
-          <div className="card" style={{ padding: 12, maxHeight: 160, overflow: "auto", boxShadow: "none", border: "1px solid #edf0f4" }}>
-            {freeTables.length === 0 ? (
-              <div className="small">Noch keine Abfrage oder keine freien Tische.</div>
-            ) : (
-              freeTables.map(t => (
-                <div key={t.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #f1f3f6" }}>
-                  <div style={{ fontWeight: 700 }}>Tisch {t.table_number}</div>
-                  <div className="small">{t.seats} Plätze</div>
-                </div>
-              ))
-            )}
-          </div>
+          <div className="small">Vom Tischplan kommend ist der Tisch vorausgewählt.</div>
         </div>
       </div>
     </div>

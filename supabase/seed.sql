@@ -1,12 +1,7 @@
--- Bereiche
 insert into areas (name, sort_order)
-values
-  ('Restaurant', 1),
-  ('Pizzastube', 2),
-  ('Terrasse', 3)
+values ('Restaurant', 1), ('Pizzastube', 2), ('Terrasse', 3)
 on conflict (name) do nothing;
 
--- Restaurant: Tische 10-22
 with a as (select id from areas where name='Restaurant')
 insert into tables (area_id, table_number, seats)
 select a.id, v.table_number, v.seats
@@ -17,7 +12,6 @@ join (values
 ) as v(table_number, seats) on true
 on conflict (area_id, table_number) do update set seats=excluded.seats;
 
--- Pizzastube: Tische 30-40
 with a as (select id from areas where name='Pizzastube')
 insert into tables (area_id, table_number, seats)
 select a.id, v.table_number, v.seats
@@ -28,7 +22,6 @@ join (values
 ) as v(table_number, seats) on true
 on conflict (area_id, table_number) do update set seats=excluded.seats;
 
--- Terrasse: 50-64 (15 Tische), alle 4er
 with a as (select id from areas where name='Terrasse')
 insert into tables (area_id, table_number, seats)
 select a.id, gs, 4
