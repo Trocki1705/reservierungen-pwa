@@ -45,3 +45,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 hr { border: none; border-top: 1px solid #edf0f4; margin: 12px 0; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #edf0f4; }
+tr.row-arrived {
+  background: #e6f7ec;
+}
+
+tr.row-arrived td {
+  border-bottom-color: #cdeed6;
+}
