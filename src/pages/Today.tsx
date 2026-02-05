@@ -285,10 +285,20 @@ export default function Today() {
                       onClick={() => openReservation(r)}
                     >
                       <td>{formatHHMM(new Date(r.start_time))}</td>
-                      <td>
-                        <div style={{ fontWeight: 700 }}>{r.guest_name}</div>
-                        <div className="small">{r.phone ?? ""}</div>
-                      </td>
+                      
+					  <td>
+						  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+							<span style={{ fontWeight: 700 }}>{r.guest_name}</span>
+							{r.notes ? (
+							  <span className="small" style={{ color: "#6b7280" }}>
+								{r.notes}
+							  </span>
+							) : null}
+						  </div>
+						  <div className="small">{r.phone ?? ""}</div>
+						</td>
+					  
+					  
                       <td>{r.party_size}</td>
                       <td>{tableLabel}</td>
                       <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
@@ -529,9 +539,17 @@ export default function Today() {
                     <td>{d.toLocaleDateString("de-DE")}</td>
                     <td>{formatHHMM(d)}</td>
                     <td>
-                      <div style={{ fontWeight: 700 }}>{r.guest_name}</div>
-                      <div className="small">{r.phone ?? ""}</div>
-                    </td>
+					  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+						<span style={{ fontWeight: 700 }}>{r.guest_name}</span>
+						{r.notes ? (
+						  <span className="small" style={{ color: "#6b7280" }}>
+							{r.notes}
+						  </span>
+						) : null}
+					  </div>
+					  <div className="small">{r.phone ?? ""}</div>
+					</td>
+					
                     <td>{r.party_size}</td>
                     <td>{tableLabel}</td>
                     <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
