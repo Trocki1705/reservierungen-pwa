@@ -86,7 +86,7 @@ export function TopBar() {
           }}
         >
           <NavLink to="/" style={({ isActive }) => baseLinkStyle(isActive)}>
-            Heute
+            Home
           </NavLink>
 
           <NavLink to="/tables" style={({ isActive }) => baseLinkStyle(isActive)}>
