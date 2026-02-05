@@ -93,30 +93,40 @@ input, select, textarea, button{
   font-size: 16px;                /* verhindert iOS zoom */
 }
 
-/* Rows: standard = 2 Spalten, aber flexibel */
-.row{
+/* Formularzeilen responsive (2 Spalten Landscape, 1 Spalte Portrait) */
+.row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-/* Portrait iPad: 1 Spalte */
-@media (max-width: 900px){
-  .row{
+@media (max-width: 900px) {
+  /* Portrait-Modus: 1 Spalte */
+  .row {
     grid-template-columns: 1fr;
   }
 }
 
-/* Tabellen auf kleineren Breiten nicht zerquetschen */
-.table{
-  width: 100%;
-  border-collapse: collapse;
+/* Große Buttons: Touch freundlich */
+button, input, select, textarea {
+  font-size: 16px;
+  padding: 12px 16px;
 }
-.table-wrap{
+
+/* Tisch-Auswahl in TablePlan immer mit Überlauf (mit Scrollen) */
+.table-wrap {
   width: 100%;
-  overflow-x: auto;               /* nur Tabelle scrollt, nicht Seite */
+  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Kleine Karten für Free-Tables */
+.card {
+  padding: 16px;
+  box-shadow: none;
+  border: 1px solid #edf0f4;
+}
+
 
 /* Header/Topbar: sauber umbrechen */
 .topbar-inner{
@@ -126,5 +136,11 @@ input, select, textarea, button{
   gap: 12px;
   flex-wrap: wrap;
 }
-
+.sticky-actions{
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding-top: 10px;
+  margin-top: 12px;
+}
 

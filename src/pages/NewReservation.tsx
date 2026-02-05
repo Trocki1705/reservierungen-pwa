@@ -21,21 +21,15 @@ export default function NewReservation() {
   const preTableId = params.get("tableId") ?? "";
 
   const [areas, setAreas] = useState<Area[]>([]);
-
   const [guestName, setGuestName] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState(2);
   const [notes, setNotes] = useState("");
-
-  // Bereich ist optional ("" = egal / später)
   const [areaId, setAreaId] = useState<string>("");
-
   const [day, setDay] = useState<Date>(() => new Date());
   const slots = useMemo(() => generateSlotsForDay(day, SLOT_MINUTES), [day]);
   const [slotISO, setSlotISO] = useState<string>(() => new Date().toISOString());
-
   const [duration, setDuration] = useState(DEFAULT_DURATION);
-
   const [freeTables, setFreeTables] = useState<TableRow[]>([]);
   const [selectedTableId, setSelectedTableId] = useState<string>("");
 
@@ -47,13 +41,10 @@ export default function NewReservation() {
     fetchAreas()
       .then((a) => {
         setAreas(a);
-        // Bereich optional lassen – nur übernehmen, wenn über Tischplan/Link vorgegeben
         setAreaId(preAreaId || "");
-        // Tisch vorwählen, wenn über Tischplan gekommen
         setSelectedTableId(preTableId || "");
       })
       .catch((e) => setErr(String(e.message ?? e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -66,9 +57,6 @@ export default function NewReservation() {
     setOk(null);
 
     const start = new Date(slotISO);
-
-   
-
     if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
 
     setLoading(true);
@@ -76,7 +64,6 @@ export default function NewReservation() {
       let free: TableRow[] = [];
 
       if (areaId) {
-        // Nur gewählter Bereich
         free = await rpcFindFreeTables({
           areaId,
           newStartISO: start.toISOString(),
@@ -85,7 +72,6 @@ export default function NewReservation() {
           bufferMinutes: BUFFER_MINUTES,
         });
       } else {
-        // Bereich egal → alle Bereiche durchsuchen
         const all = await Promise.all(
           areas.map((a) =>
             rpcFindFreeTables({
@@ -103,7 +89,6 @@ export default function NewReservation() {
 
       setFreeTables(free);
 
-      // Wenn Tisch vorgegeben war (z.B. aus Tischplan), nur übernehmen wenn er wirklich frei ist
       if (selectedTableId) {
         const okTable = free.some((t) => t.id === selectedTableId);
         if (!okTable) setSelectedTableId(free[0]?.id ?? "");
@@ -128,17 +113,9 @@ export default function NewReservation() {
     setOk(null);
 
     if (!guestName.trim()) return setErr("Name fehlt.");
-
     const start = new Date(slotISO);
-
-    
-
     if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
 
-    // Bereich automatisch bestimmen:
-    // 1) Wenn Tisch gewählt: Bereich vom Tisch
-    // 2) Sonst wenn Bereich ausgewählt: dieser
-    // 3) Sonst Default: erster Bereich (Restaurant)
     const chosen = freeTables.find((t) => t.id === selectedTableId);
     const finalAreaId = chosen?.area_id || areaId || areas[0]?.id;
 
@@ -215,7 +192,6 @@ export default function NewReservation() {
               </option>
             ))}
           </select>
-          <div className="small">Wenn du keinen Bereich wählst, wird bei Tischwahl automatisch entschieden.</div>
         </div>
       </div>
 
@@ -237,7 +213,6 @@ export default function NewReservation() {
               </option>
             ))}
           </select>
-          <div className="small">Slots innerhalb der Servicezeiten.</div>
         </div>
       </div>
 
@@ -275,36 +250,6 @@ export default function NewReservation() {
               </option>
             ))}
           </select>
-          <div className="small">
-            Tipp: Ohne Bereich sucht die App beim Button „Freie Tische anzeigen“ automatisch über alle Bereiche.
-          </div>
-        </div>
-
-        <div>
-          <div className="small" style={{ marginBottom: 8 }}>Freie Tische</div>
-          <div
-            className="card"
-            style={{ padding: 12, maxHeight: 180, overflow: "auto", boxShadow: "none", border: "1px solid #edf0f4" }}
-          >
-            {freeTables.length === 0 ? (
-              <div className="small">Noch keine Abfrage oder keine freien Tische.</div>
-            ) : (
-              freeTables.map((t) => (
-                <div
-                  key={t.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: "6px 0",
-                    borderBottom: "1px solid #f1f3f6",
-                  }}
-                >
-                  <div style={{ fontWeight: 700 }}>Tisch {t.table_number}</div>
-                  <div className="small">{t.seats} Plätze</div>
-                </div>
-              ))
-            )}
-          </div>
         </div>
       </div>
     </div>
