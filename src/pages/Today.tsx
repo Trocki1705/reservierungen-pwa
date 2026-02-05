@@ -94,6 +94,8 @@ export default function Today() {
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<ReservationWithJoins[]>([]);
 
+  const [ok, setOk] = useState<string | null>(null); // Hier wird `ok` initialisiert!
+
   async function load() {
     setLoading(true);
     setErr(null);
@@ -113,28 +115,27 @@ export default function Today() {
   }, [day]);
   
   useEffect(() => {
-  const REFRESH_MS = 60_000; // 60 Sekunden
+    const REFRESH_MS = 60_000; // 60 Sekunden
 
-  const id = window.setInterval(() => {
-    // nicht refreshen, wenn du gerade etwas bearbeitest/ offen hast
-    const busy =
-      loading ||
-      !!openId ||
-      editingDayNote ||
-      searchOpen;
+    const id = window.setInterval(() => {
+      // nicht refreshen, wenn du gerade etwas bearbeitest/ offen hast
+      const busy =
+        loading ||
+        !!openId ||
+        editingDayNote ||
+        searchOpen;
 
-    // nicht refreshen, wenn Tab nicht sichtbar (iPad Safari etc.)
-    const hidden = document.visibilityState !== "visible";
+      // nicht refreshen, wenn Tab nicht sichtbar (iPad Safari etc.)
+      const hidden = document.visibilityState !== "visible";
 
-    if (busy || hidden) return;
+      if (busy || hidden) return;
 
-    load();
-  }, REFRESH_MS);
+      load();
+    }, REFRESH_MS);
 
-  return () => window.clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [day, loading, openId, editingDayNote, searchOpen]);
-
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, loading, openId, editingDayNote, searchOpen]);
 
   // Tagesnotiz laden bei Datumswechsel
   useEffect(() => {
