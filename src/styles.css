@@ -74,4 +74,6 @@ tr.row-arrived {
 tr.row-cancelled {
   background: #fde8e8;
 }
+tr.row-arrived { background: #eefbf2; }
+tr.row-cancelled { background: #fde8e8; }
 

@@ -31,12 +31,20 @@ function statusBadge(s: ReservationWithJoins["status"]) {
   }
 }
 
+function inWindow(day: Date, isoStart: string, winName: string) {
+  const win = SERVICE_WINDOWS.find((w) => w.name === winName);
+  if (!win) return false;
+  const s = timeOnDate(day, win.start);
+  const e = timeOnDate(day, win.end);
+  const st = new Date(isoStart);
+  return st >= s && st <= e;
+}
+
 export default function Today() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState<string>("");
 
   const [day, setDay] = useState<Date>(() => new Date());
-  const [service, setService] = useState<string>("Abend");
   const [q, setQ] = useState("");
 
   const [rows, setRows] = useState<ReservationWithJoins[]>([]);
@@ -72,25 +80,26 @@ export default function Today() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, day]);
 
-  const filtered = useMemo(() => {
-    const win =
-      SERVICE_WINDOWS.find((w) => w.name === service) ??
-      SERVICE_WINDOWS[1];
-    const s = timeOnDate(day, win.start);
-    const e = timeOnDate(day, win.end);
-
+  const baseFiltered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
     return rows.filter((r) => {
-      const st = new Date(r.start_time);
-      const inService = st >= s && st <= e;
-
-      const matches =
-        !q.trim() ||
-        r.guest_name.toLowerCase().includes(q.toLowerCase()) ||
-        (r.phone ?? "").toLowerCase().includes(q.toLowerCase());
-
-      return inService && matches;
+      if (!qq) return true;
+      return (
+        r.guest_name.toLowerCase().includes(qq) ||
+        (r.phone ?? "").toLowerCase().includes(qq)
+      );
     });
-  }, [rows, q, service, day]);
+  }, [rows, q]);
+
+  const lunchRows = useMemo(
+    () => baseFiltered.filter((r) => inWindow(day, r.start_time, "Mittag")),
+    [baseFiltered, day]
+  );
+
+  const dinnerRows = useMemo(
+    () => baseFiltered.filter((r) => inWindow(day, r.start_time, "Abend")),
+    [baseFiltered, day]
+  );
 
   async function openReservation(r: ReservationWithJoins) {
     setOpenId(r.id);
@@ -128,12 +137,7 @@ export default function Today() {
     if (!openRow) return;
     setLoading(true);
     try {
-      
-	  const chosen = areaTables.find(t => t.id === editTableId);
-		await updateReservation(openRow.id, {
-		  table_id: editTableId || null,
-		  area_id: chosen ? chosen.area_id : openRow.area_id
-		});
+      await updateReservation(openRow.id, { table_id: editTableId || null });
       await load();
       closeModal();
     } finally {
@@ -141,27 +145,85 @@ export default function Today() {
     }
   }
 
+  function ReservationsTable(props: { title: string; data: ReservationWithJoins[] }) {
+    const { title, data } = props;
+    return (
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{title}</div>
+          <span className="badge">{data.length} Reservierungen</span>
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>Zeit</th>
+                <th>Name</th>
+                <th style={{ width: 90 }}>Pers.</th>
+                <th style={{ width: 170 }}>Tisch</th>
+                <th style={{ width: 120 }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="small">
+                    Keine Reservierungen.
+                  </td>
+                </tr>
+              ) : (
+                data.map((r) => {
+                  const b = statusBadge(r.status);
+                  const tableLabel = r.table
+                    ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
+                    : "—";
+
+                  const rowClass =
+                    r.status === "arrived"
+                      ? "row-arrived"
+                      : r.status === "cancelled"
+                      ? "row-cancelled"
+                      : "";
+
+                  return (
+                    <tr
+                      key={r.id}
+                      className={rowClass}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => openReservation(r)}
+                    >
+                      <td>{formatHHMM(new Date(r.start_time))}</td>
+                      <td>
+                        <div style={{ fontWeight: 700 }}>{r.guest_name}</div>
+                        <div className="small">{r.phone ?? ""}</div>
+                      </td>
+                      <td>{r.party_size}</td>
+                      <td>{tableLabel}</td>
+                      <td>
+                        <span className={`badge ${b.cls}`}>{b.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
           <div className="small">{formatDateDE(day)}</div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            onClick={() => setService("Mittag")}
-            className={service === "Mittag" ? "primary" : ""}
-          >
-            Mittag
-          </button>
-          <button
-            onClick={() => setService("Abend")}
-            className={service === "Abend" ? "primary" : ""}
-          >
-            Abend
-          </button>
-        </div>
+        <button onClick={load} disabled={loading}>
+          {loading ? "Lade…" : "Aktualisieren"}
+        </button>
       </div>
 
       <hr />
@@ -189,65 +251,20 @@ export default function Today() {
         </div>
 
         <div>
-          <label className="small">Suche</label>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Name oder Telefon"
-          />
+          <label className="small">Suche (Name/Telefon)</label>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="z.B. Müller oder 017..." />
         </div>
       </div>
 
-      {err && <div className="badge bad">Fehler: {err}</div>}
+      {err && (
+        <div style={{ marginTop: 12 }} className="badge bad">
+          Fehler: {err}
+        </div>
+      )}
 
-      <hr />
-
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Zeit</th>
-            <th>Name</th>
-            <th>Pers.</th>
-            <th>Tisch</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((r) => {
-            const b = statusBadge(r.status);
-            const rowClass =
-              r.status === "arrived"
-                ? "row-arrived"
-                : r.status === "cancelled"
-                ? "row-cancelled"
-                : "";
-
-            return (
-              <tr
-                key={r.id}
-                className={rowClass}
-                style={{ cursor: "pointer" }}
-                onClick={() => openReservation(r)}
-              >
-                <td>{formatHHMM(new Date(r.start_time))}</td>
-                <td>
-                  <strong>{r.guest_name}</strong>
-                  <div className="small">{r.phone ?? ""}</div>
-                </td>
-                <td>{r.party_size}</td>
-                <td>
-                  {r.table
-                    ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
-                    : "—"}
-                </td>
-                <td>
-                  <span className={`badge ${b.cls}`}>{b.label}</span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {/* Zwei Tabellen untereinander */}
+      <ReservationsTable title="Mittag (11:30–14:00)" data={lunchRows} />
+      <ReservationsTable title="Abend (17:00–22:30)" data={dinnerRows} />
 
       <Modal
         open={!!openId}
@@ -257,31 +274,31 @@ export default function Today() {
         {!openRow ? null : (
           <>
             <div className="small" style={{ marginBottom: 8 }}>
-              {formatHHMM(new Date(openRow.start_time))} ·{" "}
-              {openRow.party_size} Personen
+              {formatHHMM(new Date(openRow.start_time))} · {openRow.party_size} Personen
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => setStatus("confirmed")}>
+              <button onClick={() => setStatus("confirmed")} disabled={loading}>
                 bestätigt
               </button>
-              <button className="primary" onClick={() => setStatus("arrived")}>
+              <button className="primary" onClick={() => setStatus("arrived")} disabled={loading}>
                 angekommen
               </button>
-              <button onClick={() => setStatus("cancelled")}>
+              <button onClick={() => setStatus("cancelled")} disabled={loading}>
                 storniert
               </button>
-              <button onClick={() => setStatus("no_show")}>
+              <button onClick={() => setStatus("no_show")} disabled={loading}>
                 no-show
               </button>
             </div>
 
             <hr />
 
-            <select
-              value={editTableId}
-              onChange={(e) => setEditTableId(e.target.value)}
-            >
+            <div className="small" style={{ marginBottom: 8 }}>
+              Tisch festlegen / wechseln
+            </div>
+
+            <select value={editTableId} onChange={(e) => setEditTableId(e.target.value)}>
               <option value="">(ohne Tisch)</option>
               {areaTables.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -291,10 +308,12 @@ export default function Today() {
             </select>
 
             <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-              <button className="primary" onClick={saveTable}>
+              <button className="primary" onClick={saveTable} disabled={loading}>
                 Tisch speichern
               </button>
-              <button onClick={closeModal}>Abbrechen</button>
+              <button onClick={closeModal} disabled={loading}>
+                Abbrechen
+              </button>
             </div>
           </>
         )}
