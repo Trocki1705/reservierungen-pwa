@@ -13,15 +13,12 @@ export default function Login({ onLoggedIn }: { onLoggedIn: () => void }) {
 
     const email = import.meta.env.VITE_LOGIN_EMAIL as string;
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: pw,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
 
-    setLoading(false);
-
-    if (error) return setErr("Falsches Passwort.");
-    onLoggedIn();
+if (error) {
+  setErr(error.message); // <- statt nur "Falsches Passwort."
+  return;
+}
   }
 
   return (
