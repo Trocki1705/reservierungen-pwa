@@ -1,4 +1,5 @@
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../lib/api";
 
 const baseLinkStyle = (isActive: boolean) => ({
   fontSize: 16,
@@ -42,7 +43,7 @@ export function TopBar() {
             }}
             style={baseLinkStyle(location.pathname === "/" && !location.search && !location.hash)}
           >
-            Heute
+            Reservierungen
           </a>
 
           <NavLink to="/tische" style={({ isActive }) => baseLinkStyle(isActive)}>
