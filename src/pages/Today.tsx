@@ -106,6 +106,12 @@ export default function Today() {
       setLoading(false);
     }
   }
+  function goToday() {
+  const now = new Date();
+  // auf "heute" setzen, ohne Uhrzeit-Effekte
+  setDay(new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0));
+}
+
 
   useEffect(() => {
     load();
@@ -363,14 +369,18 @@ export default function Today() {
         </div>
 
         <div>
-          <label className="small">Datum</label>
-          <input
-            type="date"
-            value={toDateInputValue(day)}
-            onChange={(e) => setDay(fromDateInputValue(e.target.value))}
-          />
-        </div>
-      </div>
+  <label className="small">Datum</label>
+  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+    <input
+      type="date"
+      value={toDateInputValue(day)}
+      onChange={(e) => setDay(fromDateInputValue(e.target.value))}
+    />
+    <button onClick={goToday} style={{ padding: "12px 14px", borderRadius: 12 }}>
+      Heute
+    </button>
+  </div>
+</div>
 
       {err && (
         <div style={{ marginTop: 12 }} className="badge bad">
