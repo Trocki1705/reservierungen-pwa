@@ -61,6 +61,7 @@ function fromDateTimeLocalValue(v: string): Date {
 
 export default function Today() {
   const [day, setDay] = useState<Date>(() => new Date());
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
 
   const [rows, setRows] = useState<ReservationWithJoins[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,6 +99,7 @@ export default function Today() {
     try {
       // immer "alle Bereiche"
       setRows(await fetchTodayReservations({ day, areaId: null }));
+	  setLastRefreshAt(new Date());
     } catch (e: any) {
       setErr(String(e?.message ?? e));
     } finally {
@@ -109,6 +111,30 @@ export default function Today() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day]);
+  
+  useEffect(() => {
+  const REFRESH_MS = 60_000; // 60 Sekunden
+
+  const id = window.setInterval(() => {
+    // nicht refreshen, wenn du gerade etwas bearbeitest/ offen hast
+    const busy =
+      loading ||
+      !!openId ||
+      editingDayNote ||
+      searchOpen;
+
+    // nicht refreshen, wenn Tab nicht sichtbar (iPad Safari etc.)
+    const hidden = document.visibilityState !== "visible";
+
+    if (busy || hidden) return;
+
+    load();
+  }, REFRESH_MS);
+
+  return () => window.clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [day, loading, openId, editingDayNote, searchOpen]);
+
 
   // Tagesnotiz laden bei Datumswechsel
   useEffect(() => {
