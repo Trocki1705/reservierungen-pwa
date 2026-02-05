@@ -52,7 +52,6 @@ function toDateTimeLocalValue(d: Date): string {
   return `${y}-${m}-${day}T${hh}:${mm}`;
 }
 function fromDateTimeLocalValue(v: string): Date {
-  // "YYYY-MM-DDTHH:mm"
   const [datePart, timePart] = v.split("T");
   const [y, m, d] = datePart.split("-").map(Number);
   const [hh, mm] = timePart.split(":").map(Number);
@@ -79,7 +78,7 @@ export default function Today() {
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editParty, setEditParty] = useState(2);
-  const [editStartLocal, setEditStartLocal] = useState(""); // datetime-local string
+  const [editStartLocal, setEditStartLocal] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
   // Modal: Gast-Suche
@@ -106,17 +105,16 @@ export default function Today() {
       setLoading(false);
     }
   }
-  function goToday() {
-  const now = new Date();
-  // auf "heute" setzen, ohne Uhrzeit-Effekte
-  setDay(new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0));
-}
-
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, day]);
+
+  function goToday() {
+    const now = new Date();
+    setDay(new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0));
+  }
 
   const lunchRows = useMemo(
     () => rows.filter((r) => inWindow(day, r.start_time, "Mittag")),
@@ -145,7 +143,6 @@ export default function Today() {
     setOpenRow(r);
     setEditTableId(r.table_id ?? "");
 
-    // Editfelder füllen
     setEditName(r.guest_name ?? "");
     setEditPhone(r.phone ?? "");
     setEditParty(r.party_size ?? 2);
@@ -176,6 +173,7 @@ export default function Today() {
   async function setStatus(newStatus: ReservationWithJoins["status"]) {
     if (!openRow) return;
     setLoading(true);
+    setErr(null);
     try {
       await updateReservation(openRow.id, { status: newStatus });
       await load();
@@ -190,6 +188,7 @@ export default function Today() {
   async function saveTable() {
     if (!openRow) return;
     setLoading(true);
+    setErr(null);
     try {
       await updateReservation(openRow.id, { table_id: editTableId || null });
       await load();
@@ -228,7 +227,11 @@ export default function Today() {
 
   async function doDelete() {
     if (!openRow) return;
-    const ok = window.confirm(`Reservierung wirklich löschen?\n\n${openRow.guest_name} · ${formatHHMM(new Date(openRow.start_time))}`);
+    const ok = window.confirm(
+      `Reservierung wirklich löschen?\n\n${openRow.guest_name} · ${formatHHMM(
+        new Date(openRow.start_time)
+      )}`
+    );
     if (!ok) return;
 
     setLoading(true);
@@ -244,8 +247,25 @@ export default function Today() {
     }
   }
 
+  function NameCell({ r }: { r: ReservationWithJoins }) {
+    return (
+      <>
+        <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+          <span style={{ fontWeight: 700 }}>{r.guest_name}</span>
+          {r.notes ? (
+            <span className="small" style={{ color: "#6b7280" }}>
+              {r.notes}
+            </span>
+          ) : null}
+        </div>
+        <div className="small">{r.phone ?? ""}</div>
+      </>
+    );
+  }
+
   function ReservationsTable(props: { title: string; data: ReservationWithJoins[] }) {
     const { title, data } = props;
+
     return (
       <div style={{ marginTop: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
@@ -291,20 +311,7 @@ export default function Today() {
                       onClick={() => openReservation(r)}
                     >
                       <td>{formatHHMM(new Date(r.start_time))}</td>
-                      
-					  <td>
-						  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-							<span style={{ fontWeight: 700 }}>{r.guest_name}</span>
-							{r.notes ? (
-							  <span className="small" style={{ color: "#6b7280" }}>
-								{r.notes}
-							  </span>
-							) : null}
-						  </div>
-						  <div className="small">{r.phone ?? ""}</div>
-						</td>
-					  
-					  
+                      <td><NameCell r={r} /></td>
                       <td>{r.party_size}</td>
                       <td>{tableLabel}</td>
                       <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
@@ -369,18 +376,19 @@ export default function Today() {
         </div>
 
         <div>
-  <label className="small">Datum</label>
-  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-    <input
-      type="date"
-      value={toDateInputValue(day)}
-      onChange={(e) => setDay(fromDateInputValue(e.target.value))}
-    />
-    <button onClick={goToday} style={{ padding: "12px 14px", borderRadius: 12 }}>
-      Heute
-    </button>
-  </div>
-</div>
+          <label className="small">Datum</label>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              type="date"
+              value={toDateInputValue(day)}
+              onChange={(e) => setDay(fromDateInputValue(e.target.value))}
+            />
+            <button type="button" onClick={goToday} style={{ padding: "12px 14px", borderRadius: 12 }}>
+              Heute
+            </button>
+          </div>
+        </div>
+      </div>
 
       {err && (
         <div style={{ marginTop: 12 }} className="badge bad">
@@ -399,7 +407,6 @@ export default function Today() {
       >
         {!openRow ? null : (
           <>
-            {/* Schnelle Aktionen */}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button onClick={() => setStatus("confirmed")} disabled={loading}>bestätigt</button>
               <button className="primary" onClick={() => setStatus("arrived")} disabled={loading}>angekommen</button>
@@ -409,7 +416,6 @@ export default function Today() {
 
             <hr />
 
-            {/* Bearbeiten */}
             <div style={{ fontWeight: 800, marginBottom: 8 }}>Bearbeiten</div>
 
             <div className="row">
@@ -459,7 +465,6 @@ export default function Today() {
 
             <hr />
 
-            {/* Tisch */}
             <div className="small" style={{ marginBottom: 8 }}>Tisch festlegen / wechseln</div>
 
             <select value={editTableId} onChange={(e) => setEditTableId(e.target.value)}>
@@ -548,18 +553,7 @@ export default function Today() {
                   >
                     <td>{d.toLocaleDateString("de-DE")}</td>
                     <td>{formatHHMM(d)}</td>
-                    <td>
-					  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-						<span style={{ fontWeight: 700 }}>{r.guest_name}</span>
-						{r.notes ? (
-						  <span className="small" style={{ color: "#6b7280" }}>
-							{r.notes}
-						  </span>
-						) : null}
-					  </div>
-					  <div className="small">{r.phone ?? ""}</div>
-					</td>
-					
+                    <td><NameCell r={r} /></td>
                     <td>{r.party_size}</td>
                     <td>{tableLabel}</td>
                     <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
@@ -569,10 +563,6 @@ export default function Today() {
             )}
           </tbody>
         </table>
-
-        <div className="small" style={{ marginTop: 8 }}>
-          Tipp: Tippe auf ein Ergebnis, um es direkt zu bearbeiten (Name/Uhrzeit/Löschen).
-        </div>
       </Modal>
     </div>
   );
