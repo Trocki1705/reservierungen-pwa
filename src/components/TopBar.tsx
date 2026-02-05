@@ -12,6 +12,7 @@ const baseLinkStyle = (isActive: boolean) => ({
   textDecoration: "none",
   display: "inline-flex",
   alignItems: "center",
+  whiteSpace: "nowrap" as const,
 });
 
 export function TopBar() {
@@ -24,7 +25,7 @@ export function TopBar() {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
-          flexWrap: "wrap",
+          flexWrap: "wrap", // gesamter Header darf umbrechen (z.B. auf sehr klein)
         }}
       >
         {/* Titel */}
@@ -36,6 +37,7 @@ export function TopBar() {
               fontSize: 18,
               textDecoration: "none",
               color: "#111",
+              whiteSpace: "nowrap",
             }}
           >
             Reservierungen
@@ -43,8 +45,17 @@ export function TopBar() {
           <span className="badge small">iPad</span>
         </div>
 
-        {/* Navigation + Logout (eine Ebene) */}
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        {/* Navigation + Logout: NIE umbrechen */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+            flexWrap: "nowrap",      // ✅ verhindert, dass Logout darunter rutscht
+            overflowX: "auto",       // ✅ wenn zu eng: horizontal scroll statt wrap
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           <NavLink to="/" style={({ isActive }) => baseLinkStyle(isActive)}>
             Heute
           </NavLink>
@@ -67,7 +78,7 @@ export function TopBar() {
             + Neu
           </NavLink>
 
-          {/* Logout – klein & ruhig */}
+          {/* Logout – klein & ruhig, bleibt in der Reihe */}
           <button
             onClick={() => supabase.auth.signOut()}
             title="Abmelden"
@@ -79,6 +90,8 @@ export function TopBar() {
               background: "#f9fafb",
               color: "#374151",
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flex: "0 0 auto",
             }}
           >
             Logout
