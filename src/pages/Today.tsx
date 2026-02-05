@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  fetchAreas,
   fetchTodayReservations,
   fetchTables,
   updateReservation,
@@ -9,7 +8,7 @@ import {
   fetchDayNote,
   upsertDayNote,
 } from "../lib/api";
-import type { Area, ReservationWithJoins, TableRow } from "../lib/types";
+import type { ReservationWithJoins, TableRow } from "../lib/types";
 import {
   SERVICE_WINDOWS,
   formatDateDE,
@@ -61,9 +60,6 @@ function fromDateTimeLocalValue(v: string): Date {
 }
 
 export default function Today() {
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [areaId, setAreaId] = useState<string>("");
-
   const [day, setDay] = useState<Date>(() => new Date());
 
   const [rows, setRows] = useState<ReservationWithJoins[]>([]);
@@ -96,17 +92,12 @@ export default function Today() {
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<ReservationWithJoins[]>([]);
 
-  useEffect(() => {
-    fetchAreas()
-      .then(setAreas)
-      .catch((e) => setErr(String(e.message ?? e)));
-  }, []);
-
   async function load() {
     setLoading(true);
     setErr(null);
     try {
-      setRows(await fetchTodayReservations({ day, areaId: areaId || null }));
+      // immer "alle Bereiche"
+      setRows(await fetchTodayReservations({ day, areaId: null }));
     } catch (e: any) {
       setErr(String(e?.message ?? e));
     } finally {
@@ -117,7 +108,7 @@ export default function Today() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areaId, day]);
+  }, [day]);
 
   // Tagesnotiz laden bei Datumswechsel
   useEffect(() => {
@@ -454,16 +445,6 @@ export default function Today() {
       <hr />
 
       <div className="row">
-        <div>
-          <label className="small">Bereich</label>
-          <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
-            <option value="">Alle</option>
-            {areas.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-        </div>
-
         <div>
           <label className="small">Datum</label>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
