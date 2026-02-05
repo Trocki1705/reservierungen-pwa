@@ -12,7 +12,7 @@ function isOverlapping(startA: Date, endA: Date, startB: Date, endB: Date) {
 export default function TablePlan() {
   const nav = useNavigate();
   const [areas, setAreas] = useState<Area[]>([]);
-  const [areaId, setAreaId] = useState<string>("all"); // Standardmäßig alle Bereiche
+  const [areaId, setAreaId] = useState<string | null>(null); // Kein "all", nur ein spezifischer Bereich
   const [day, setDay] = useState<Date>(() => new Date());
 
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -24,23 +24,25 @@ export default function TablePlan() {
   useEffect(() => {
     fetchAreas().then(a => {
       setAreas(a);
-      if (!areaId && a[0]) setAreaId("all"); // Standardmäßig alle Bereiche setzen
+      if (!areaId && a[0]) setAreaId(a[0].id); // Standardmäßig ersten Bereich setzen
     }).catch(e => setErr(String(e.message ?? e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    load();
+    if (areaId) {
+      load(); // Nur laden, wenn areaId gesetzt ist
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, day]);
 
   async function load() {
     setLoading(true); setErr(null);
     try {
-      // Wenn "all" ausgewählt ist, holen wir alle Bereiche
+      // Wir holen nur den Bereich, der in `areaId` gesetzt ist
       const [t, r] = await Promise.all([
-        fetchTables(areaId === "all" ? "" : areaId), // Für alle Bereiche holen wir alle Tische
-        fetchReservationsForAreaDay({ day, areaId: areaId === "all" ? "" : areaId }) // Für alle Bereiche holen wir alle Reservierungen
+        fetchTables(areaId), // Nur den spezifischen Bereich holen
+        fetchReservationsForAreaDay({ day, areaId }) // Nur den spezifischen Bereich holen
       ]);
       setTables(t);
       setRes(r.filter(x => !!x.table_id));
@@ -94,8 +96,7 @@ export default function TablePlan() {
       <div className="row">
         <div>
           <label className="small">Bereich</label>
-          <select value={areaId} onChange={e => setAreaId(e.target.value)}>
-            <option value="all">Alle</option> {/* Option für alle Bereiche */}
+          <select value={areaId ?? ""} onChange={e => setAreaId(e.target.value)}>
             {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
@@ -126,7 +127,7 @@ export default function TablePlan() {
               className={cls}
               onClick={() => handleTableClick(t.id)}
               style={{ cursor: "pointer" }}
-              title="Tippen: Zeige Reservierungen für diesen Tisch"
+              title="Tippe: Zeige Reservierungen für diesen Tisch"
             >
               <h3>Tisch {t.table_number}</h3>
               <div className="small">{t.seats} Plätze</div>

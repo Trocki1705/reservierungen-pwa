@@ -31,7 +31,7 @@ export default function NewReservation() {
   const [slotISO, setSlotISO] = useState<string>(() => new Date().toISOString());
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [freeTables, setFreeTables] = useState<TableRow[]>([]);
-  const [selectedTableId, setSelectedTableId] = useState<string>("");
+  const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]); // Array für die zugewiesenen Tische
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -42,7 +42,6 @@ export default function NewReservation() {
       .then((a) => {
         setAreas(a);
         setAreaId(preAreaId || "");
-        setSelectedTableId(preTableId || "");
       })
       .catch((e) => setErr(String(e.message ?? e)));
   }, []);
@@ -89,11 +88,8 @@ export default function NewReservation() {
 
       setFreeTables(free);
 
-      if (selectedTableId) {
-        const okTable = free.some((t) => t.id === selectedTableId);
-        if (!okTable) setSelectedTableId(free[0]?.id ?? "");
-      } else {
-        setSelectedTableId(free[0]?.id ?? "");
+      if (selectedTableIds.length === 0) {
+        setSelectedTableIds([free[0]?.id ?? ""]);
       }
 
       setOk(
@@ -116,8 +112,9 @@ export default function NewReservation() {
     const start = new Date(slotISO);
     if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
 
-    const chosen = freeTables.find((t) => t.id === selectedTableId);
-    const finalAreaId = chosen?.area_id || areaId || areas[0]?.id;
+    if (selectedTableIds.length === 0) return setErr("Kein Tisch ausgewählt.");
+
+    const finalAreaId = areaId || areas[0]?.id;
 
     if (!finalAreaId) return setErr("Kein Bereich verfügbar (finalAreaId leer).");
 
@@ -131,7 +128,7 @@ export default function NewReservation() {
         duration_minutes: duration,
         notes: notes.trim() || undefined,
         area_id: finalAreaId,
-        table_id: selectedTableId || null,
+        table_ids: selectedTableIds, // Wir übergeben alle zugewiesenen Tische
       });
 
       setOk("Gespeichert ✅");
@@ -143,6 +140,18 @@ export default function NewReservation() {
     }
   }
 
+  // Funktion zum Hinzufügen eines Tisches
+  const addTable = (tableId: string) => {
+    if (!selectedTableIds.includes(tableId)) {
+      setSelectedTableIds([...selectedTableIds, tableId]);
+    }
+  };
+
+  // Funktion zum Entfernen eines Tisches
+  const removeTable = (tableId: string) => {
+    setSelectedTableIds(selectedTableIds.filter((id) => id !== tableId));
+  };
+
   return (
     <div className="card">
       <div style={{ fontSize: 22, fontWeight: 800 }}>Neue Reservierung</div>
@@ -152,6 +161,7 @@ export default function NewReservation() {
 
       <hr />
 
+      {/* Formularfelder für Name, Telefon, etc. */}
       <div className="row">
         <div>
           <label className="small">Name *</label>
@@ -163,6 +173,7 @@ export default function NewReservation() {
         </div>
       </div>
 
+      {/* Personen und Dauer */}
       <div className="row" style={{ marginTop: 12 }}>
         <div>
           <label className="small">Personen</label>
@@ -182,6 +193,10 @@ export default function NewReservation() {
             <option value={180}>180</option>
           </select>
         </div>
+      </div>
+
+      {/* Bereich auswählen */}
+      <div className="row" style={{ marginTop: 12 }}>
         <div>
           <label className="small">Bereich (optional)</label>
           <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
@@ -195,6 +210,7 @@ export default function NewReservation() {
         </div>
       </div>
 
+      {/* Datum und Uhrzeit */}
       <div className="row" style={{ marginTop: 12 }}>
         <div>
           <label className="small">Datum</label>
@@ -216,6 +232,7 @@ export default function NewReservation() {
         </div>
       </div>
 
+      {/* Notizen */}
       <div style={{ marginTop: 12 }}>
         <label className="small">Notiz</label>
         <textarea
@@ -225,6 +242,7 @@ export default function NewReservation() {
         />
       </div>
 
+      {/* Buttons */}
       <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button onClick={checkAvailability} disabled={loading}>
           {loading ? "Prüfe…" : "Freie Tische anzeigen"}
@@ -239,10 +257,11 @@ export default function NewReservation() {
 
       <hr />
 
+      {/* Tische hinzufügen */}
       <div className="row">
         <div>
           <label className="small">Tisch (Vorschlag = kleinster passender)</label>
-          <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
+          <select value={selectedTableIds[0] || ""} onChange={(e) => addTable(e.target.value)}>
             <option value="">(ohne Tisch)</option>
             {freeTables.map((t) => (
               <option key={t.id} value={t.id}>
@@ -250,8 +269,27 @@ export default function NewReservation() {
               </option>
             ))}
           </select>
+          <button onClick={() => addTable(freeTables[0]?.id)} disabled={loading}>Tisch hinzufügen</button>
         </div>
       </div>
+
+      {/* Anzeigen der zugewiesenen Tische */}
+      {selectedTableIds.length > 0 && (
+        <div>
+          <h3>Zu gewiesene Tische:</h3>
+          <ul>
+            {selectedTableIds.map((tableId) => {
+              const table = freeTables.find((t) => t.id === tableId);
+              return (
+                <li key={tableId}>
+                  {table ? `Tisch ${table.table_number} (${table.seats} Plätze)` : "Tisch nicht gefunden"}
+                  <button onClick={() => removeTable(tableId)}>Entfernen</button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
