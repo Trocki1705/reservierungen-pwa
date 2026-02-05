@@ -110,10 +110,7 @@ export default function TablePlan() {
             onChange={e => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
-        <div>
-          <label className="small">Aktionen</label>
-          <button onClick={load} disabled={loading}>{loading ? "Lade…" : "Aktualisieren"}</button>
-        </div>
+        
       </div>
 
       {err && <div style={{ marginTop: 12 }} className="badge bad">Fehler: {err}</div>}
