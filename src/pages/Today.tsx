@@ -6,6 +6,8 @@ import {
   updateReservation,
   deleteReservation,
   searchReservationsByGuestName,
+  fetchDayNote,
+  upsertDayNote,
 } from "../lib/api";
 import type { Area, ReservationWithJoins, TableRow } from "../lib/types";
 import {
@@ -68,6 +70,12 @@ export default function Today() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Tagesnotiz
+  const [dayNote, setDayNote] = useState("");
+  const [editingDayNote, setEditingDayNote] = useState(false);
+  const [dayNoteLoading, setDayNoteLoading] = useState(false);
+  const [dayNoteErr, setDayNoteErr] = useState<string | null>(null);
+
   // Modal: Reservierung bearbeiten
   const [openId, setOpenId] = useState<string>("");
   const [openRow, setOpenRow] = useState<ReservationWithJoins | null>(null);
@@ -110,6 +118,34 @@ export default function Today() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, day]);
+
+  // Tagesnotiz laden bei Datumswechsel
+  useEffect(() => {
+    const iso = toDateInputValue(day);
+    setDayNoteErr(null);
+    setDayNoteLoading(true);
+    fetchDayNote(iso)
+      .then((d) => setDayNote(d?.note ?? ""))
+      .catch((e) => {
+        setDayNote("");
+        setDayNoteErr(String(e?.message ?? e));
+      })
+      .finally(() => setDayNoteLoading(false));
+  }, [day]);
+
+  async function saveDayNote() {
+    const iso = toDateInputValue(day);
+    setDayNoteErr(null);
+    setDayNoteLoading(true);
+    try {
+      await upsertDayNote(iso, dayNote.trim());
+      setEditingDayNote(false);
+    } catch (e: any) {
+      setDayNoteErr(String(e?.message ?? e));
+    } finally {
+      setDayNoteLoading(false);
+    }
+  }
 
   function goToday() {
     const now = new Date();
@@ -345,15 +381,59 @@ export default function Today() {
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Home</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
           <div className="small">
             {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>{" "}
             (<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
           </div>
+
+          {/* Tagesnotiz */}
+          <div className="small" style={{ marginTop: 6 }}>
+            {!editingDayNote ? (
+              <span
+                style={{ color: "#6b7280", cursor: "pointer" }}
+                onClick={() => setEditingDayNote(true)}
+                title="Tag-Notiz bearbeiten"
+              >
+                {dayNoteLoading
+                  ? "📝 lade Notiz…"
+                  : dayNote
+                  ? `📝 ${dayNote}`
+                  : "📝 Notiz für diesen Tag hinzufügen"}
+              </span>
+            ) : (
+              <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                <input
+                  value={dayNote}
+                  onChange={(e) => setDayNote(e.target.value)}
+                  placeholder="z.B. Hochzeit, Geburtstag, wenig Personal…"
+                  style={{ minWidth: 280 }}
+                />
+                <button className="primary" onClick={saveDayNote} disabled={dayNoteLoading}>
+                  Speichern
+                </button>
+                <button onClick={() => setEditingDayNote(false)} disabled={dayNoteLoading}>
+                  Abbrechen
+                </button>
+              </div>
+            )}
+
+            {dayNoteErr && (
+              <span className="badge bad" style={{ marginLeft: 10 }}>
+                Notiz-Fehler: {dayNoteErr}
+              </span>
+            )}
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button onClick={() => { setSearchOpen(true); setSearchResults([]); setSearchErr(null); }}>
+          <button
+            onClick={() => {
+              setSearchOpen(true);
+              setSearchResults([]);
+              setSearchErr(null);
+            }}
+          >
             Gast suchen
           </button>
           <button onClick={load} disabled={loading}>
