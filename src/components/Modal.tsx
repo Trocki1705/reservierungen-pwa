@@ -25,14 +25,19 @@ export function Modal(props: {
       <div
         className="card"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(720px, 100%)" }}
+        style={{
+          width: "min(720px, 100%)",
+          maxHeight: "90vh", // Maximale Höhe für das Modal auf mobilen Geräten
+          overflowY: "auto", // Ermöglicht das Scrollen im Modal
+        }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div style={{ fontSize: 18, fontWeight: 800 }}>{props.title}</div>
           <button onClick={props.onClose} style={{ width: 44 }}>✕</button>
         </div>
         <hr />
-        {props.children}
+        {/* Die eigentlichen Inhalte des Modals */}
+        <div style={{ paddingBottom: 16 }}>{props.children}</div>
       </div>
     </div>
   );
