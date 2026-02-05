@@ -29,7 +29,6 @@ function inWindow(day: Date, isoStart: string, winName: string) {
   return st >= s && st <= e;
 }
 
-// datetime-local helpers (lokal, kein UTC shift)
 function toDateTimeLocalValue(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -52,6 +51,7 @@ export default function Today() {
   const [rows, setRows] = useState<ReservationWithJoins[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null); // Ok-State hinzugefügt
   const [dayNote, setDayNote] = useState("");
   const [editingDayNote, setEditingDayNote] = useState(false);
   const [dayNoteLoading, setDayNoteLoading] = useState(false);
@@ -265,7 +265,6 @@ export default function Today() {
 
       <hr />
 
-      {/* Datum und Heute Button nebeneinander, rechtszentriert, gleich groß */}
       <div className="row" style={{ marginTop: 12, justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
         <div style={{ flex: 1 }}>
           <label className="small">Datum</label>
@@ -296,7 +295,6 @@ export default function Today() {
         </button>
       </div>
 
-      {/* Weitere UI-Elemente */}
       {err && <div className="badge bad">{err}</div>}
       {ok && <div className="badge ok">{ok}</div>}
       <ReservationsTable title="Mittag (11:30–14:00)" data={lunchRows} />
