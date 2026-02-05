@@ -1,3 +1,19 @@
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../lib/api";
+
+const baseLinkStyle = (isActive: boolean) => ({
+  fontSize: 16,
+  fontWeight: 700,
+  padding: "12px 18px",
+  borderRadius: 14,
+  border: "1px solid #cfd5df",
+  background: isActive ? "#111" : "#f8fafc",
+  color: isActive ? "#fff" : "#111",
+  textDecoration: "none",
+  display: "inline-flex",
+  alignItems: "center",
+});
+
 export function TopBar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -14,25 +30,15 @@ export function TopBar() {
           flexWrap: "wrap",
         }}
       >
-        {/* Links: Titel */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link
-            to="/"
-            style={{
-              fontWeight: 900,
-              fontSize: 18,
-              textDecoration: "none",
-              color: "#111",
-            }}
-          >
+          <Link to="/" style={{ fontWeight: 900, textDecoration: "none", color: "#111" }}>
             Reservierungen
           </Link>
-          <span className="badge small">iPad</span>
+          <span className="badge">iPad</span>
         </div>
 
-        {/* Mitte: Navigation */}
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {/* Heute */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          {/* HEUTE: immer ohne Query/Hash zurück */}
           <a
             href="/"
             onClick={(e) => {
@@ -65,24 +71,24 @@ export function TopBar() {
           >
             + Neu
           </NavLink>
-        </div>
 
-        {/* Rechts: Logout (klein & ruhig) */}
-        <button
-          onClick={() => supabase.auth.signOut()}
-          title="Abmelden"
-          style={{
-            fontSize: 12,
-            padding: "6px 10px",
-            borderRadius: 10,
-            border: "1px solid #e5e7eb",
-            background: "#f9fafb",
-            color: "#374151",
-            cursor: "pointer",
-          }}
-        >
-          Logout
-        </button>
+          {/* Logout klein */}
+          <button
+            onClick={() => supabase.auth.signOut()}
+            title="Abmelden"
+            style={{
+              fontSize: 12,
+              padding: "6px 10px",
+              borderRadius: 10,
+              border: "1px solid #e5e7eb",
+              background: "#f9fafb",
+              color: "#374151",
+              cursor: "pointer",
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   );
