@@ -148,10 +148,9 @@ button, input, select, textarea {
 .home-button-container {
   width: 100%; /* Volle Breite */
   height: 50px; /* Gleiche Höhe, je nach Bedarf anpassen */
-  background-color: black; /* Hintergrundfarbe auf schwarz setzen */
   color: white; /* Textfarbe auf weiß setzen, damit es lesbar bleibt */
   display: flex;
-  align-items: center;
+  align-items: right;
   justify-content: center;
   border-radius: 5px; /* Optional: für abgerundete Ecken */
 }
