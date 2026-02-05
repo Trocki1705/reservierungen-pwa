@@ -16,7 +16,7 @@ export default function Login({ onLoggedIn }: { onLoggedIn: () => void }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
 
 if (error) {
-  setErr(error.message); // <- statt nur "Falsches Passwort."
+  setErr("Falsches Passwort.");
   return;
 }
   }

@@ -11,9 +11,7 @@ export default function App() {
   return (
   
   <AuthGate>
-  <div style={{ padding: 10, background: "yellow", fontWeight: 800 }}>
-    APP INHALT SICHTBAR ✅
-  </div>
+ 
 
   <TopBar />
   <Routes>
