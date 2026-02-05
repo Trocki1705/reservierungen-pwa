@@ -8,22 +8,22 @@ import TablePlan from "./pages/TablePlan";
 
 export default function App() {
   return (
-    <AuthGate>
-	<AuthGate>
+  
+  <AuthGate>
   <div style={{ padding: 10, background: "yellow", fontWeight: 800 }}>
     APP INHALT SICHTBAR ✅
   </div>
 
   <TopBar />
-  <Routes>...</Routes>
-</AuthGate>
-
-      <TopBar />
-      <Routes>
+  <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/new" element={<NewReservation />} />
         <Route path="/tables" element={<TablePlan />} />
       </Routes>
-    </AuthGate>
+</AuthGate>
+  
+  
+  
+   
   );
 }
