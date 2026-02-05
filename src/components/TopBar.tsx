@@ -25,19 +25,41 @@ export function TopBar() {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
-          flexWrap: "wrap", // ✅ darf umbrechen
+          flexWrap: "wrap",
         }}
       >
-        {/* Links: darf umbrechen / auf eigene Zeile gehen */}
+        {/* Links: Logout (sehr klein) + Titel */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            flex: "1 1 320px", // ✅ nimmt Platz, darf kleiner werden, darf umbrechen
+            gap: 8,
+            flex: "1 1 320px",
             minWidth: 0,
           }}
         >
+          {/* Logout – ICON ONLY, nicht langgezogen */}
+          <button
+            onClick={() => supabase.auth.signOut()}
+            title="Abmelden"
+            aria-label="Logout"
+            style={{
+              width: 32,
+              height: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 10,
+              border: "1px solid #e5e7eb",
+              background: "#f9fafb",
+              color: "#374151",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            ⎋
+          </button>
+
           <Link
             to="/"
             style={{
@@ -50,16 +72,17 @@ export function TopBar() {
           >
             Reservierungen
           </Link>
+
           <span className="badge small">iPad</span>
         </div>
 
-        {/* Rechts: Buttons bleiben in EINER Reihe, kein Scroll */}
+        {/* Rechts: Navigation */}
         <div
           style={{
             display: "flex",
             gap: 10,
             alignItems: "center",
-            flexWrap: "nowrap", // ✅ Logout bleibt daneben
+            flexWrap: "nowrap",
           }}
         >
           <NavLink to="/" style={({ isActive }) => baseLinkStyle(isActive)}>
@@ -83,24 +106,6 @@ export function TopBar() {
           >
             + Neu
           </NavLink>
-
-          {/* Logout: klein, direkt daneben */}
-          <button
-            onClick={() => supabase.auth.signOut()}
-            title="Abmelden"
-            style={{
-              fontSize: 12,
-              padding: "8px 12px",
-              borderRadius: 12,
-              border: "1px solid #e5e7eb",
-              background: "#f9fafb",
-              color: "#374151",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Logout
-          </button>
         </div>
       </div>
     </div>
