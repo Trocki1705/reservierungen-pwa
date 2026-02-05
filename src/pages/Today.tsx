@@ -99,7 +99,7 @@ export default function Today() {
     try {
       // immer "alle Bereiche"
       setRows(await fetchTodayReservations({ day, areaId: null }));
-	  setLastRefreshAt(new Date());
+      setLastRefreshAt(new Date());
     } catch (e: any) {
       setErr(String(e?.message ?? e));
     } finally {
@@ -111,30 +111,29 @@ export default function Today() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day]);
-  
+
   useEffect(() => {
-  const REFRESH_MS = 60_000; // 60 Sekunden
+    const REFRESH_MS = 60_000; // 60 Sekunden
 
-  const id = window.setInterval(() => {
-    // nicht refreshen, wenn du gerade etwas bearbeitest/ offen hast
-    const busy =
-      loading ||
-      !!openId ||
-      editingDayNote ||
-      searchOpen;
+    const id = window.setInterval(() => {
+      // nicht refreshen, wenn du gerade etwas bearbeitest/ offen hast
+      const busy =
+        loading ||
+        !!openId ||
+        editingDayNote ||
+        searchOpen;
 
-    // nicht refreshen, wenn Tab nicht sichtbar (iPad Safari etc.)
-    const hidden = document.visibilityState !== "visible";
+      // nicht refreshen, wenn Tab nicht sichtbar (iPad Safari etc.)
+      const hidden = document.visibilityState !== "visible";
 
-    if (busy || hidden) return;
+      if (busy || hidden) return;
 
-    load();
-  }, REFRESH_MS);
+      load();
+    }, REFRESH_MS);
 
-  return () => window.clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [day, loading, openId, editingDayNote, searchOpen]);
-
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, loading, openId, editingDayNote, searchOpen]);
 
   // Tagesnotiz laden bei Datumswechsel
   useEffect(() => {
@@ -300,107 +299,32 @@ export default function Today() {
     }
   }
 
-  function NameCell({ r }: { r: ReservationWithJoins }) {
-    return (
-      <>
-        <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-          <span style={{ fontWeight: 700 }}>{r.guest_name}</span>
-          {r.notes ? (
-            <span className="small" style={{ color: "#6b7280" }}>
-              {r.notes}
-            </span>
-          ) : null}
-        </div>
-        <div className="small">{r.phone ?? ""}</div>
-      </>
-    );
-  }
+  // Neue Variablen für Wischen
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-  function ReservationsTable(props: { title: string; data: ReservationWithJoins[] }) {
-    const { title, data } = props;
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.changedTouches[0].clientX);
+  };
 
-    return (
-      <div style={{ marginTop: 14 }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>{title}</div>
-          <span className="badge">{data.length} Reservierungen</span>
-        </div>
-
-        <div style={{ marginTop: 8 }}>
-		
-		<div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 90 }}>Zeit</th>
-                <th>Name</th>
-                <th style={{ width: 90 }}>Pers.</th>
-                <th style={{ width: 170 }}>Tisch</th>
-                <th style={{ width: 120 }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="small">Keine Reservierungen.</td>
-                </tr>
-              ) : (
-                data.map((r) => {
-                  const b = statusBadge(r.status);
-                  const tableLabel = r.table
-                    ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
-                    : "—";
-
-                  const rowClass =
-                    r.status === "arrived"
-                      ? "row-arrived"
-                      : r.status === "cancelled"
-                      ? "row-cancelled"
-                      : "";
-
-                  return (
-                    <tr
-                      key={r.id}
-                      className={rowClass}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => openReservation(r)}
-                    >
-                      <td>{formatHHMM(new Date(r.start_time))}</td>
-                      <td><NameCell r={r} /></td>
-                      <td>{r.party_size}</td>
-                      <td>{tableLabel}</td>
-                      <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-		  
-		  </div>
-		  
-        </div>
-      </div>
-    );
-  }
-
-  async function runGuestSearch() {
-    setSearchErr(null);
-    const q = searchQ.trim();
-    if (!q) return setSearchErr("Bitte Name eingeben.");
-    setSearchLoading(true);
-    try {
-      const res = await searchReservationsByGuestName({ q, limit: 50 });
-      setSearchResults(res);
-    } catch (e: any) {
-      setSearchErr(String(e?.message ?? e));
-    } finally {
-      setSearchLoading(false);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setTouchEnd(e.changedTouches[0].clientX);
+    if (touchStart && touchEnd) {
+      const diff = touchEnd - touchStart;
+      if (diff > 50) {
+        setDay(new Date(day.setDate(day.getDate() - 1))); // Nach links wischen -> vorheriger Tag
+      } else if (diff < -50) {
+        setDay(new Date(day.setDate(day.getDate() + 1))); // Nach rechts wischen -> nächster Tag
+      }
     }
-  }
+  };
 
   return (
-    <div className="card">
+    <div
+      className="card"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
           {/* Überschrift + Tagesnotiz nebeneinander */}
