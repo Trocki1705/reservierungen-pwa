@@ -476,7 +476,7 @@ export default function Today() {
       <div className="row">
         <div>
           <label className="small">Datum</label>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "right" }}>
 			<div class="date-picker-container">
 				<input
 				  type="date"
