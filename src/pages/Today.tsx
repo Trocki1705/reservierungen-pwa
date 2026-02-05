@@ -100,6 +100,21 @@ export default function Today() {
     () => baseFiltered.filter((r) => inWindow(day, r.start_time, "Abend")),
     [baseFiltered, day]
   );
+  const personsAll = useMemo(
+  () => baseFiltered.reduce((sum, r) => sum + (r.party_size || 0), 0),
+  [baseFiltered]
+);
+
+const personsLunch = useMemo(
+  () => lunchRows.reduce((sum, r) => sum + (r.party_size || 0), 0),
+  [lunchRows]
+);
+
+const personsDinner = useMemo(
+  () => dinnerRows.reduce((sum, r) => sum + (r.party_size || 0), 0),
+  [dinnerRows]
+);
+
 
   async function openReservation(r: ReservationWithJoins) {
     setOpenId(r.id);
@@ -219,7 +234,10 @@ export default function Today() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
-          <div className="small">{formatDateDE(day)}</div>
+          <div className="small">
+  {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>
+  {" "}(<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
+</div>
         </div>
         <button onClick={load} disabled={loading}>
           {loading ? "Lade…" : "Aktualisieren"}
