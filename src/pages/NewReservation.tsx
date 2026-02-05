@@ -67,9 +67,7 @@ export default function NewReservation() {
 
     const start = new Date(slotISO);
 
-    if (!fitsServiceWindows(start, duration, BUFFER_MINUTES)) {
-      return setErr("Zeit liegt außerhalb der Öffnungszeiten (inkl. Dauer/Puffer).");
-    }
+   
 
     if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
 
@@ -133,9 +131,7 @@ export default function NewReservation() {
 
     const start = new Date(slotISO);
 
-    if (!fitsServiceWindows(start, duration, BUFFER_MINUTES)) {
-      return setErr("Zeit liegt außerhalb der Öffnungszeiten (inkl. Dauer/Puffer).");
-    }
+    
 
     if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
 
