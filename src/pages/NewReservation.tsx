@@ -5,7 +5,6 @@ import {
   BUFFER_MINUTES,
   DEFAULT_DURATION,
   SLOT_MINUTES,
-  fitsServiceWindows,
   formatHHMM,
   generateSlotsForDay,
   toDateInputValue,
@@ -31,7 +30,7 @@ export default function NewReservation() {
   const [slotISO, setSlotISO] = useState<string>(() => new Date().toISOString());
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [freeTables, setFreeTables] = useState<TableRow[]>([]);
-  const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]); // Array für die zugewiesenen Tische
+  const [selectedTableId, setSelectedTableId] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -42,6 +41,7 @@ export default function NewReservation() {
       .then((a) => {
         setAreas(a);
         setAreaId(preAreaId || "");
+        setSelectedTableId(preTableId || "");
       })
       .catch((e) => setErr(String(e.message ?? e)));
   }, []);
@@ -88,8 +88,11 @@ export default function NewReservation() {
 
       setFreeTables(free);
 
-      if (selectedTableIds.length === 0) {
-        setSelectedTableIds([free[0]?.id ?? ""]);
+      if (selectedTableId) {
+        const okTable = free.some((t) => t.id === selectedTableId);
+        if (!okTable) setSelectedTableId(free[0]?.id ?? "");
+      } else {
+        setSelectedTableId(free[0]?.id ?? "");
       }
 
       setOk(
@@ -112,9 +115,8 @@ export default function NewReservation() {
     const start = new Date(slotISO);
     if (!areas.length) return setErr("Keine Bereiche gefunden (areas leer).");
 
-    if (selectedTableIds.length === 0) return setErr("Kein Tisch ausgewählt.");
-
-    const finalAreaId = areaId || areas[0]?.id;
+    const chosen = freeTables.find((t) => t.id === selectedTableId);
+    const finalAreaId = chosen?.area_id || areaId || areas[0]?.id;
 
     if (!finalAreaId) return setErr("Kein Bereich verfügbar (finalAreaId leer).");
 
@@ -126,9 +128,9 @@ export default function NewReservation() {
         party_size: partySize,
         start_time_iso: start.toISOString(),
         duration_minutes: duration,
-        notes: notes.trim() || undefined,
+        notes: notes.trim() || undefined, // Hier werden die Tischnummern als Notiz gespeichert
         area_id: finalAreaId,
-        table_ids: selectedTableIds, // Wir übergeben alle zugewiesenen Tische
+        table_id: selectedTableId || null,
       });
 
       setOk("Gespeichert ✅");
@@ -139,18 +141,6 @@ export default function NewReservation() {
       setLoading(false);
     }
   }
-
-  // Funktion zum Hinzufügen eines Tisches
-  const addTable = (tableId: string) => {
-    if (!selectedTableIds.includes(tableId)) {
-      setSelectedTableIds([...selectedTableIds, tableId]);
-    }
-  };
-
-  // Funktion zum Entfernen eines Tisches
-  const removeTable = (tableId: string) => {
-    setSelectedTableIds(selectedTableIds.filter((id) => id !== tableId));
-  };
 
   return (
     <div className="card">
@@ -238,7 +228,7 @@ export default function NewReservation() {
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="z.B. Kinderstuhl, Allergie, ruhiger Tisch..."
+          placeholder="z.B. Tische 1 und 2 für unsere Gruppe"
         />
       </div>
 
@@ -257,11 +247,11 @@ export default function NewReservation() {
 
       <hr />
 
-      {/* Tische hinzufügen */}
+      {/* Tischnummern (optional) */}
       <div className="row">
         <div>
           <label className="small">Tisch (Vorschlag = kleinster passender)</label>
-          <select value={selectedTableIds[0] || ""} onChange={(e) => addTable(e.target.value)}>
+          <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
             <option value="">(ohne Tisch)</option>
             {freeTables.map((t) => (
               <option key={t.id} value={t.id}>
@@ -269,27 +259,8 @@ export default function NewReservation() {
               </option>
             ))}
           </select>
-          <button onClick={() => addTable(freeTables[0]?.id)} disabled={loading}>Tisch hinzufügen</button>
         </div>
       </div>
-
-      {/* Anzeigen der zugewiesenen Tische */}
-      {selectedTableIds.length > 0 && (
-        <div>
-          <h3>Zu gewiesene Tische:</h3>
-          <ul>
-            {selectedTableIds.map((tableId) => {
-              const table = freeTables.find((t) => t.id === tableId);
-              return (
-                <li key={tableId}>
-                  {table ? `Tisch ${table.table_number} (${table.seats} Plätze)` : "Tisch nicht gefunden"}
-                  <button onClick={() => removeTable(tableId)}>Entfernen</button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
