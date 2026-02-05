@@ -17,8 +17,8 @@ export function TopBar() {
           <span className="badge">iPad PWA</span>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <NavLink to="/" style={({isActive}) => linkStyle(isActive)}>Heute</NavLink>
-          <NavLink to="/tische" style={({isActive}) => linkStyle(isActive)}>Tischplan</NavLink>
+          <NavLink to="/" style={({isActive}) => linkStyle(isActive), fontSize: 18, fontWeight: 900, padding: "14px 22px", borderRadius: 16 }>Heute</NavLink>
+          <NavLink to="/tische" style={({isActive}) => linkStyle(isActive), fontSize: 18, fontWeight: 900, padding: "14px 22px", borderRadius: 16 }>Tischplan</NavLink>
           <NavLink
   to="/neu"
   style={({ isActive }) => ({
