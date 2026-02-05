@@ -12,7 +12,7 @@ function isOverlapping(startA: Date, endA: Date, startB: Date, endB: Date) {
 export default function TablePlan() {
   const nav = useNavigate();
   const [areas, setAreas] = useState<Area[]>([]);
-  const [areaId, setAreaId] = useState<string>("all"); // Standardmäßig "all" für alle Bereiche
+  const [areaId, setAreaId] = useState<string | null>(null); // Null für "alle"
   const [day, setDay] = useState<Date>(() => new Date());
 
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -24,7 +24,7 @@ export default function TablePlan() {
   useEffect(() => {
     fetchAreas().then(a => {
       setAreas(a);
-      if (!areaId && a[0]) setAreaId("all"); // Setze standardmäßig alle Bereiche
+      if (!areaId && a[0]) setAreaId(null); // Standardmäßig "alle Bereiche" mit null
     }).catch(e => setErr(String(e.message ?? e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -37,10 +37,10 @@ export default function TablePlan() {
   async function load() {
     setLoading(true); setErr(null);
     try {
-      // Wenn "all" ausgewählt ist, holen wir alle Bereiche
+      // Wenn areaId null ist, holen wir alle Bereiche
       const [t, r] = await Promise.all([
-        fetchTables(areaId === "all" ? null : areaId), // null für alle Bereiche, nicht ein leerer String
-        fetchReservationsForAreaDay({ day, areaId: areaId === "all" ? null : areaId }) // null für alle Bereiche
+        fetchTables(areaId), // null für alle Bereiche
+        fetchReservationsForAreaDay({ day, areaId }) // null für alle Bereiche
       ]);
       setTables(t);
       setRes(r.filter(x => !!x.table_id));
@@ -94,7 +94,7 @@ export default function TablePlan() {
       <div className="row">
         <div>
           <label className="small">Bereich</label>
-          <select value={areaId} onChange={e => setAreaId(e.target.value)}>
+          <select value={areaId ?? "all"} onChange={e => setAreaId(e.target.value === "all" ? null : e.target.value)}>
             <option value="all">Alle</option> {/* Option für alle Bereiche */}
             {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
