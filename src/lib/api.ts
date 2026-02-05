@@ -124,3 +124,21 @@ export async function updateReservation(
   if (error) throw error;
   return data;
 }
+
+import type { ReservationWithJoins } from "./types";
+
+export async function searchReservationsByGuestName(opts: { q: string; limit?: number; }) {
+  const query = opts.q.trim();
+  if (!query) return [];
+
+  const { data, error } = await supabase
+    .from("reservations")
+    .select("*, area:areas!reservations_area_id_fkey(name), table:tables(table_number,seats)")
+    .ilike("guest_name", `%${query}%`)
+    .order("start_time", { ascending: false })
+    .limit(opts.limit ?? 50);
+
+  if (error) throw error;
+  return (data ?? []) as ReservationWithJoins[];
+}
+

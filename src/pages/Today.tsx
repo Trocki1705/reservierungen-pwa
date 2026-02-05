@@ -4,6 +4,7 @@ import {
   fetchTodayReservations,
   fetchTables,
   updateReservation,
+  searchReservationsByGuestName,
 } from "../lib/api";
 import type { Area, ReservationWithJoins, TableRow } from "../lib/types";
 import {
@@ -45,17 +46,23 @@ export default function Today() {
   const [areaId, setAreaId] = useState<string>("");
 
   const [day, setDay] = useState<Date>(() => new Date());
-  const [q, setQ] = useState("");
 
   const [rows, setRows] = useState<ReservationWithJoins[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Modal
+  // Modal: Reservierung bearbeiten
   const [openId, setOpenId] = useState<string>("");
   const [openRow, setOpenRow] = useState<ReservationWithJoins | null>(null);
   const [areaTables, setAreaTables] = useState<TableRow[]>([]);
   const [editTableId, setEditTableId] = useState<string>("");
+
+  // Modal: Gast-Suche
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchErr, setSearchErr] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<ReservationWithJoins[]>([]);
 
   useEffect(() => {
     fetchAreas()
@@ -80,41 +87,27 @@ export default function Today() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaId, day]);
 
-  const baseFiltered = useMemo(() => {
-    const qq = q.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (!qq) return true;
-      return (
-        r.guest_name.toLowerCase().includes(qq) ||
-        (r.phone ?? "").toLowerCase().includes(qq)
-      );
-    });
-  }, [rows, q]);
-
   const lunchRows = useMemo(
-    () => baseFiltered.filter((r) => inWindow(day, r.start_time, "Mittag")),
-    [baseFiltered, day]
+    () => rows.filter((r) => inWindow(day, r.start_time, "Mittag")),
+    [rows, day]
   );
-
   const dinnerRows = useMemo(
-    () => baseFiltered.filter((r) => inWindow(day, r.start_time, "Abend")),
-    [baseFiltered, day]
+    () => rows.filter((r) => inWindow(day, r.start_time, "Abend")),
+    [rows, day]
   );
+
   const personsAll = useMemo(
-  () => baseFiltered.reduce((sum, r) => sum + (r.party_size || 0), 0),
-  [baseFiltered]
-);
-
-const personsLunch = useMemo(
-  () => lunchRows.reduce((sum, r) => sum + (r.party_size || 0), 0),
-  [lunchRows]
-);
-
-const personsDinner = useMemo(
-  () => dinnerRows.reduce((sum, r) => sum + (r.party_size || 0), 0),
-  [dinnerRows]
-);
-
+    () => rows.reduce((sum, r) => sum + (r.party_size || 0), 0),
+    [rows]
+  );
+  const personsLunch = useMemo(
+    () => lunchRows.reduce((sum, r) => sum + (r.party_size || 0), 0),
+    [lunchRows]
+  );
+  const personsDinner = useMemo(
+    () => dinnerRows.reduce((sum, r) => sum + (r.party_size || 0), 0),
+    [dinnerRows]
+  );
 
   async function openReservation(r: ReservationWithJoins) {
     setOpenId(r.id);
@@ -229,19 +222,40 @@ const personsDinner = useMemo(
     );
   }
 
+  async function runGuestSearch() {
+    setSearchErr(null);
+    const q = searchQ.trim();
+    if (!q) return setSearchErr("Bitte Name eingeben.");
+    setSearchLoading(true);
+    try {
+      const res = await searchReservationsByGuestName({ q, limit: 50 });
+      setSearchResults(res);
+    } catch (e: any) {
+      setSearchErr(String(e?.message ?? e));
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
           <div className="small">
-  {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>
-  {" "}(<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
-</div>
+            {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>{" "}
+            (<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
+          </div>
         </div>
-        <button onClick={load} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
-        </button>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={() => { setSearchOpen(true); setSearchResults([]); setSearchErr(null); }}>
+            Gast suchen
+          </button>
+          <button onClick={load} disabled={loading}>
+            {loading ? "Lade…" : "Aktualisieren"}
+          </button>
+        </div>
       </div>
 
       <hr />
@@ -267,11 +281,6 @@ const personsDinner = useMemo(
             onChange={(e) => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
-
-        <div>
-          <label className="small">Suche (Name/Telefon)</label>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="z.B. Müller oder 017..." />
-        </div>
       </div>
 
       {err && (
@@ -280,10 +289,10 @@ const personsDinner = useMemo(
         </div>
       )}
 
-      {/* Zwei Tabellen untereinander */}
       <ReservationsTable title="Mittag (11:30–14:00)" data={lunchRows} />
       <ReservationsTable title="Abend (17:00–22:30)" data={dinnerRows} />
 
+      {/* Modal: Reservierung bearbeiten */}
       <Modal
         open={!!openId}
         title={openRow ? `Reservierung: ${openRow.guest_name}` : ""}
@@ -335,6 +344,92 @@ const personsDinner = useMemo(
             </div>
           </>
         )}
+      </Modal>
+
+      {/* Modal: Gast suchen (alle Tage) */}
+      <Modal
+        open={searchOpen}
+        title="Gast suchen (alle Tage)"
+        onClose={() => setSearchOpen(false)}
+      >
+        <div className="row">
+          <div>
+            <label className="small">Name</label>
+            <input
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="z.B. Müller"
+            />
+          </div>
+          <div style={{ alignSelf: "end" }}>
+            <button className="primary" onClick={runGuestSearch} disabled={searchLoading}>
+              {searchLoading ? "Suche…" : "Suchen"}
+            </button>
+          </div>
+        </div>
+
+        {searchErr && (
+          <div style={{ marginTop: 12 }} className="badge bad">
+            Fehler: {searchErr}
+          </div>
+        )}
+
+        <hr />
+
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 130 }}>Datum</th>
+              <th style={{ width: 80 }}>Zeit</th>
+              <th>Name</th>
+              <th style={{ width: 70 }}>Pers.</th>
+              <th style={{ width: 170 }}>Tisch</th>
+              <th style={{ width: 120 }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {searchResults.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="small">
+                  Keine Ergebnisse (oder noch nicht gesucht).
+                </td>
+              </tr>
+            ) : (
+              searchResults.map((r) => {
+                const b = statusBadge(r.status);
+                const d = new Date(r.start_time);
+                const tableLabel = r.table
+                  ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
+                  : "—";
+                return (
+                  <tr
+                    key={r.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setSearchOpen(false);
+                      openReservation(r);
+                    }}
+                    title="Tippen: Reservierung öffnen"
+                  >
+                    <td>{d.toLocaleDateString("de-DE")}</td>
+                    <td>{formatHHMM(d)}</td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{r.guest_name}</div>
+                      <div className="small">{r.phone ?? ""}</div>
+                    </td>
+                    <td>{r.party_size}</td>
+                    <td>{tableLabel}</td>
+                    <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+
+        <div className="small" style={{ marginTop: 8 }}>
+          Tipp: Tippe auf ein Ergebnis, um es direkt zu öffnen (Status/Tisch ändern).
+        </div>
       </Modal>
     </div>
   );
