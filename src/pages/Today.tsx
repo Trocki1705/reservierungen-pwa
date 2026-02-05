@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchAreas, fetchTodayReservations, fetchTables, updateReservation, deleteReservation, searchReservationsByGuestName, fetchDayNote, upsertDayNote } from "../lib/api";
-import type { Area, ReservationWithJoins, TableRow } from "../lib/types";
-import { SERVICE_WINDOWS, formatDateDE, formatHHMM, timeOnDate, toDateInputValue, fromDateInputValue } from "../lib/settings";
+import {
+  fetchTodayReservations,
+  fetchTables,
+  updateReservation,
+  deleteReservation,
+  searchReservationsByGuestName,
+  fetchDayNote,
+  upsertDayNote,
+} from "../lib/api";
+import type { ReservationWithJoins, TableRow } from "../lib/types";
+import {
+  SERVICE_WINDOWS,
+  formatDateDE,
+  formatHHMM,
+  timeOnDate,
+  toDateInputValue,
+  fromDateInputValue,
+} from "../lib/settings";
 import { Modal } from "../components/Modal";
-import { useNavigate } from "react-router-dom";
 
 function statusBadge(s: ReservationWithJoins["status"]) {
   switch (s) {
@@ -29,6 +43,7 @@ function inWindow(day: Date, isoStart: string, winName: string) {
   return st >= s && st <= e;
 }
 
+// datetime-local helpers (lokal, kein UTC shift)
 function toDateTimeLocalValue(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -45,45 +60,46 @@ function fromDateTimeLocalValue(v: string): Date {
 }
 
 export default function Today() {
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [areaId, setAreaId] = useState<string>("");
   const [day, setDay] = useState<Date>(() => new Date());
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
+
   const [rows, setRows] = useState<ReservationWithJoins[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null); // Ok-State hinzugefügt
+
+  // Tagesnotiz
   const [dayNote, setDayNote] = useState("");
   const [editingDayNote, setEditingDayNote] = useState(false);
   const [dayNoteLoading, setDayNoteLoading] = useState(false);
   const [dayNoteErr, setDayNoteErr] = useState<string | null>(null);
+
+  // Modal: Reservierung bearbeiten
   const [openId, setOpenId] = useState<string>("");
   const [openRow, setOpenRow] = useState<ReservationWithJoins | null>(null);
   const [areaTables, setAreaTables] = useState<TableRow[]>([]);
   const [editTableId, setEditTableId] = useState<string>("");
+
+  // Edit-Felder
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editParty, setEditParty] = useState(2);
   const [editStartLocal, setEditStartLocal] = useState("");
   const [editNotes, setEditNotes] = useState("");
+
+  // Modal: Gast-Suche
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchErr, setSearchErr] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<ReservationWithJoins[]>([]);
 
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchAreas()
-      .then(setAreas)
-      .catch((e) => setErr(String(e.message ?? e)));
-  }, []);
-
   async function load() {
     setLoading(true);
     setErr(null);
     try {
-      setRows(await fetchTodayReservations({ day, areaId: areaId || null }));
+      // immer "alle Bereiche"
+      setRows(await fetchTodayReservations({ day, areaId: null }));
+	  setLastRefreshAt(new Date());
     } catch (e: any) {
       setErr(String(e?.message ?? e));
     } finally {
@@ -93,8 +109,34 @@ export default function Today() {
 
   useEffect(() => {
     load();
-  }, [areaId, day]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day]);
+  
+  useEffect(() => {
+  const REFRESH_MS = 60_000; // 60 Sekunden
 
+  const id = window.setInterval(() => {
+    // nicht refreshen, wenn du gerade etwas bearbeitest/ offen hast
+    const busy =
+      loading ||
+      !!openId ||
+      editingDayNote ||
+      searchOpen;
+
+    // nicht refreshen, wenn Tab nicht sichtbar (iPad Safari etc.)
+    const hidden = document.visibilityState !== "visible";
+
+    if (busy || hidden) return;
+
+    load();
+  }, REFRESH_MS);
+
+  return () => window.clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [day, loading, openId, editingDayNote, searchOpen]);
+
+
+  // Tagesnotiz laden bei Datumswechsel
   useEffect(() => {
     const iso = toDateInputValue(day);
     setDayNoteErr(null);
@@ -153,6 +195,7 @@ export default function Today() {
     setOpenId(r.id);
     setOpenRow(r);
     setEditTableId(r.table_id ?? "");
+
     setEditName(r.guest_name ?? "");
     setEditPhone(r.phone ?? "");
     setEditParty(r.party_size ?? 2);
@@ -172,6 +215,7 @@ export default function Today() {
     setOpenRow(null);
     setAreaTables([]);
     setEditTableId("");
+
     setEditName("");
     setEditPhone("");
     setEditParty(2);
@@ -213,6 +257,7 @@ export default function Today() {
     if (!openRow) return;
     const name = editName.trim();
     if (!name) return setErr("Name darf nicht leer sein.");
+
     setLoading(true);
     setErr(null);
     try {
@@ -255,57 +300,369 @@ export default function Today() {
     }
   }
 
+  function NameCell({ r }: { r: ReservationWithJoins }) {
+    return (
+      <>
+        <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+          <span style={{ fontWeight: 700 }}>{r.guest_name}</span>
+          {r.notes ? (
+            <span className="small" style={{ color: "#6b7280" }}>
+              {r.notes}
+            </span>
+          ) : null}
+        </div>
+        <div className="small">{r.phone ?? ""}</div>
+      </>
+    );
+  }
+
+  function ReservationsTable(props: { title: string; data: ReservationWithJoins[] }) {
+    const { title, data } = props;
+
+    return (
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{title}</div>
+          <span className="badge">{data.length} Reservierungen</span>
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+		
+		<div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>Zeit</th>
+                <th>Name</th>
+                <th style={{ width: 90 }}>Pers.</th>
+                <th style={{ width: 170 }}>Tisch</th>
+                <th style={{ width: 120 }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="small">Keine Reservierungen.</td>
+                </tr>
+              ) : (
+                data.map((r) => {
+                  const b = statusBadge(r.status);
+                  const tableLabel = r.table
+                    ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
+                    : "—";
+
+                  const rowClass =
+                    r.status === "arrived"
+                      ? "row-arrived"
+                      : r.status === "cancelled"
+                      ? "row-cancelled"
+                      : "";
+
+                  return (
+                    <tr
+                      key={r.id}
+                      className={rowClass}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => openReservation(r)}
+                    >
+                      <td>{formatHHMM(new Date(r.start_time))}</td>
+                      <td><NameCell r={r} /></td>
+                      <td>{r.party_size}</td>
+                      <td>{tableLabel}</td>
+                      <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+		  
+		  </div>
+		  
+        </div>
+      </div>
+    );
+  }
+
+  async function runGuestSearch() {
+    setSearchErr(null);
+    const q = searchQ.trim();
+    if (!q) return setSearchErr("Bitte Name eingeben.");
+    setSearchLoading(true);
+    try {
+      const res = await searchReservationsByGuestName({ q, limit: 50 });
+      setSearchResults(res);
+    } catch (e: any) {
+      setSearchErr(String(e?.message ?? e));
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
   return (
     <div className="card">
-      <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
-      <div className="small">
-        {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>{" "}
-        (<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          {/* Überschrift + Tagesnotiz nebeneinander */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
+
+            {!editingDayNote ? (
+              <span
+                className="small"
+                style={{
+                  color: "#6b7280",
+                  cursor: "pointer",
+                  border: "1px dashed #cfd5df",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                }}
+                onClick={() => setEditingDayNote(true)}
+                title="Tagesnotiz bearbeiten"
+              >
+                {dayNoteLoading
+                  ? "📝 lade…"
+                  : dayNote
+                  ? `📝 ${dayNote}`
+                  : "📝 Tagesnotiz hinzufügen"}
+              </span>
+            ) : (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  value={dayNote}
+                  onChange={(e) => setDayNote(e.target.value)}
+                  placeholder="z.B. Hochzeit, wenig Personal, Event…"
+                  style={{ minWidth: 260 }}
+                />
+                <button className="primary" onClick={saveDayNote} disabled={dayNoteLoading}>
+                  Speichern
+                </button>
+                <button onClick={() => setEditingDayNote(false)} disabled={dayNoteLoading}>
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Datum + Counter */}
+          <div className="small" style={{ marginTop: 4 }}>
+            {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>{" "}
+            (<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
+          </div>
+
+          {dayNoteErr && (
+            <div className="badge bad" style={{ marginTop: 6 }}>
+              Notiz-Fehler: {dayNoteErr}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={() => {
+              setSearchOpen(true);
+              setSearchResults([]);
+              setSearchErr(null);
+            }}
+          >
+            Gast suchen
+          </button>
+          
+        </div>
       </div>
 
       <hr />
 
-      <div className="row" style={{ marginTop: 12, justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
-        <div style={{ flex: 1 }}>
+      <div className="row">
+        <div>
           <label className="small">Datum</label>
-          <input
-            type="date"
-            value={toDateInputValue(day)}
-            onChange={(e) => setDay(fromDateInputValue(e.target.value))}
-            style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", fontSize: "16px" }}
-          />
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              type="date"
+              value={toDateInputValue(day)}
+              onChange={(e) => setDay(fromDateInputValue(e.target.value))}
+            />
+            <button type="button" onClick={goToday} style={{ padding: "12px 14px", borderRadius: 12 }}>
+              Home
+            </button>
+          </div>
         </div>
-
-        <button
-          type="button"
-          onClick={goToday}
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            borderRadius: "12px",
-            fontWeight: "bold",
-            backgroundColor: "#1d4ed8",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            flex: 1,
-          }}
-        >
-          Heute
-        </button>
       </div>
 
-      {err && <div className="badge bad">{err}</div>}
-      {ok && <div className="badge ok">{ok}</div>}
+      {err && (
+        <div style={{ marginTop: 12 }} className="badge bad">
+          Fehler: {err}
+        </div>
+      )}
+
       <ReservationsTable title="Mittag (11:30–14:00)" data={lunchRows} />
       <ReservationsTable title="Abend (17:00–22:30)" data={dinnerRows} />
 
+      {/* Modal: Reservierung bearbeiten */}
       <Modal
         open={!!openId}
         title={openRow ? `Reservierung: ${openRow.guest_name}` : ""}
         onClose={closeModal}
       >
-        {/* Modal-Inhalt */}
+        {!openRow ? null : (
+          <>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => setStatus("confirmed")} disabled={loading}>bestätigt</button>
+              <button className="primary" onClick={() => setStatus("arrived")} disabled={loading}>angekommen</button>
+              <button onClick={() => setStatus("cancelled")} disabled={loading}>storniert</button>
+              <button onClick={() => setStatus("no_show")} disabled={loading}>no-show</button>
+            </div>
+
+            <hr />
+
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Bearbeiten</div>
+
+            <div className="row">
+              <div>
+                <label className="small">Name</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <label className="small">Telefon</label>
+                <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="row" style={{ marginTop: 12 }}>
+              <div>
+                <label className="small">Personen</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editParty}
+                  onChange={(e) => setEditParty(Math.max(1, Number(e.target.value || 1)))}
+                />
+              </div>
+              <div>
+                <label className="small">Datum/Uhrzeit</label>
+                <input
+                  type="datetime-local"
+                  value={editStartLocal}
+                  onChange={(e) => setEditStartLocal(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <label className="small">Notiz</label>
+              <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="primary" onClick={saveEdits} disabled={loading}>
+                Änderungen speichern
+              </button>
+              <button onClick={doDelete} disabled={loading}>
+                Löschen
+              </button>
+            </div>
+
+            <hr />
+
+            <div className="small" style={{ marginBottom: 8 }}>Tisch festlegen / wechseln</div>
+
+            <select value={editTableId} onChange={(e) => setEditTableId(e.target.value)}>
+              <option value="">(ohne Tisch)</option>
+              {areaTables.map((t) => (
+                <option key={t.id} value={t.id}>
+                  Tisch {t.table_number} · {t.seats} Plätze
+                </option>
+              ))}
+            </select>
+
+            <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+              <button className="primary" onClick={saveTable} disabled={loading}>
+                Tisch speichern
+              </button>
+              <button onClick={closeModal} disabled={loading}>
+                Schließen
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* Modal: Gast suchen (alle Tage) */}
+      <Modal
+        open={searchOpen}
+        title="Gast suchen (alle Tage)"
+        onClose={() => setSearchOpen(false)}
+      >
+        <div className="row">
+          <div>
+            <label className="small">Name</label>
+            <input
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="z.B. Müller"
+            />
+          </div>
+          <div style={{ alignSelf: "end" }}>
+            <button className="primary" onClick={runGuestSearch} disabled={searchLoading}>
+              {searchLoading ? "Suche…" : "Suchen"}
+            </button>
+          </div>
+        </div>
+
+        {searchErr && (
+          <div style={{ marginTop: 12 }} className="badge bad">
+            Fehler: {searchErr}
+          </div>
+        )}
+
+        <hr />
+<div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 130 }}>Datum</th>
+              <th style={{ width: 80 }}>Zeit</th>
+              <th>Name</th>
+              <th style={{ width: 70 }}>Pers.</th>
+              <th style={{ width: 170 }}>Tisch</th>
+              <th style={{ width: 120 }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {searchResults.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="small">Keine Ergebnisse (oder noch nicht gesucht).</td>
+              </tr>
+            ) : (
+              searchResults.map((r) => {
+                const b = statusBadge(r.status);
+                const d = new Date(r.start_time);
+                const tableLabel = r.table
+                  ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
+                  : "—";
+                return (
+                  <tr
+                    key={r.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setSearchOpen(false);
+                      openReservation(r);
+                    }}
+                    title="Tippen: Reservierung öffnen"
+                  >
+                    <td>{d.toLocaleDateString("de-DE")}</td>
+                    <td>{formatHHMM(d)}</td>
+                    <td><NameCell r={r} /></td>
+                    <td>{r.party_size}</td>
+                    <td>{tableLabel}</td>
+                    <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+	</div>	
       </Modal>
     </div>
   );

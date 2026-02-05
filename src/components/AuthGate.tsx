@@ -29,19 +29,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, []);
-  useEffect(() => {
-  const checkSession = async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      console.log("Session geladen:", data); // Debugging: zeigt die Session an
-      setAuthed(!!data.session);  // Setze `authed` auf true, wenn Session existiert
-    } catch (e) {
-      console.error("Fehler beim Abrufen der Session:", e);
-    }
-  };
-  checkSession();
-}, []);
-
+  
 
   if (loading) return <div className="card">Lade…</div>;
   if (!authed) return <Login onLoggedIn={() => setAuthed(true)} />;
