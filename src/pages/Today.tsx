@@ -345,7 +345,7 @@ export default function Today() {
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>Home</div>
           <div className="small">
             {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>{" "}
             (<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
