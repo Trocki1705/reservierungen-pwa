@@ -12,7 +12,7 @@ function isOverlapping(startA: Date, endA: Date, startB: Date, endB: Date) {
 export default function TablePlan() {
   const nav = useNavigate();
   const [areas, setAreas] = useState<Area[]>([]);
-  const [areaId, setAreaId] = useState<string>("");
+  const [areaId, setAreaId] = useState<string>("all"); // Standardmäßig "all" für alle Bereiche
   const [day, setDay] = useState<Date>(() => new Date());
 
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -24,18 +24,23 @@ export default function TablePlan() {
   useEffect(() => {
     fetchAreas().then(a => {
       setAreas(a);
-      if (!areaId && a[0]) setAreaId(a[0].id);
+      if (!areaId && a[0]) setAreaId("all"); // Setze standardmäßig alle Bereiche
     }).catch(e => setErr(String(e.message ?? e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaId, day]);
+
   async function load() {
-    if (!areaId) return;
     setLoading(true); setErr(null);
     try {
+      // Wenn "all" ausgewählt ist, holen wir alle Bereiche
       const [t, r] = await Promise.all([
-        fetchTables(areaId),
-        fetchReservationsForAreaDay({ day, areaId })
+        fetchTables(areaId === "all" ? "" : areaId), // Leeres String für alle Bereiche
+        fetchReservationsForAreaDay({ day, areaId: areaId === "all" ? "" : areaId }) // Leeres String für alle Bereiche
       ]);
       setTables(t);
       setRes(r.filter(x => !!x.table_id));
@@ -46,11 +51,8 @@ export default function TablePlan() {
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [areaId, day]);
-
   const windowRange = useMemo(() => {
-    // Wir entfernen hier die Unterscheidung zwischen "Mittag" und "Abend" und nehmen den gesamten Tag
-    return { start: timeOnDate(day, "00:00"), end: timeOnDate(day, "23:59") };
+    return { start: timeOnDate(day, "00:00"), end: timeOnDate(day, "23:59") }; // Ganzer Tag
   }, [day]);
 
   const tableInfo = useMemo(() => {
@@ -74,7 +76,6 @@ export default function TablePlan() {
   }, [tables, res, windowRange.start, windowRange.end]);
 
   const handleTableClick = (tableId: string) => {
-    // Beim Klicken auf einen Tisch werden alle Reservierungen für diesen Tisch angezeigt
     const reservationsForTable = res.filter(r => r.table_id === tableId);
     setSelectedTableReservations(reservationsForTable);
   };
@@ -84,10 +85,7 @@ export default function TablePlan() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Tischplan</div>
-          <div className="small">{formatDateDE(day)}</div> {/* Hier keine Service-Auswahl mehr */}
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {/* Die Buttons für "Mittag" und "Abend" wurden entfernt */}
+          <div className="small">{formatDateDE(day)}</div>
         </div>
       </div>
 
@@ -97,6 +95,7 @@ export default function TablePlan() {
         <div>
           <label className="small">Bereich</label>
           <select value={areaId} onChange={e => setAreaId(e.target.value)}>
+            <option value="all">Alle</option> {/* Option für alle Bereiche */}
             {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
@@ -107,10 +106,6 @@ export default function TablePlan() {
             value={toDateInputValue(day)}
             onChange={e => setDay(fromDateInputValue(e.target.value))}
           />
-        </div>
-        <div>
-          <label className="small">Aktionen</label>
-          <button onClick={load} disabled={loading}>{loading ? "Lade…" : "Aktualisieren"}</button>
         </div>
       </div>
 
@@ -129,7 +124,7 @@ export default function TablePlan() {
             <div
               key={t.id}
               className={cls}
-              onClick={() => handleTableClick(t.id)} // Ändere dies, um die Reservierungen anzuzeigen
+              onClick={() => handleTableClick(t.id)}
               style={{ cursor: "pointer" }}
               title="Tippen: Zeige Reservierungen für diesen Tisch"
             >
