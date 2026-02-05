@@ -436,9 +436,7 @@ export default function Today() {
           >
             Gast suchen
           </button>
-          <button onClick={load} disabled={loading}>
-            {loading ? "Lade…" : "Aktualisieren"}
-          </button>
+          
         </div>
       </div>
 
