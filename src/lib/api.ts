@@ -185,3 +185,25 @@ export async function upsertDayNote(dayISO: string, note: string) {
 
   if (error) throw error;
 }
+export async function fetchReservationsForAreaDay(opts: {
+  day: Date;
+  areaId: string;
+}): Promise<ReservationWithJoins[]> {
+  const start = new Date(opts.day);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(opts.day);
+  end.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from("reservations")
+    .select("*, area:areas!reservations_area_id_fkey(name), table:tables(table_number,seats)")
+    .eq("area_id", opts.areaId)
+    .gte("start_time", start.toISOString())
+    .lte("start_time", end.toISOString())
+    .order("start_time", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as ReservationWithJoins[];
+}
+
