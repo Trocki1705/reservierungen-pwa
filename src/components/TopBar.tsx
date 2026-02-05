@@ -25,11 +25,19 @@ export function TopBar() {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
-          flexWrap: "wrap", // gesamter Header darf umbrechen (z.B. auf sehr klein)
+          flexWrap: "wrap", // ✅ darf umbrechen
         }}
       >
-        {/* Titel */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Links: darf umbrechen / auf eigene Zeile gehen */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flex: "1 1 320px", // ✅ nimmt Platz, darf kleiner werden, darf umbrechen
+            minWidth: 0,
+          }}
+        >
           <Link
             to="/"
             style={{
@@ -45,15 +53,13 @@ export function TopBar() {
           <span className="badge small">iPad</span>
         </div>
 
-        {/* Navigation + Logout: NIE umbrechen */}
+        {/* Rechts: Buttons bleiben in EINER Reihe, kein Scroll */}
         <div
           style={{
             display: "flex",
             gap: 10,
             alignItems: "center",
-            flexWrap: "nowrap",      // ✅ verhindert, dass Logout darunter rutscht
-            overflowX: "auto",       // ✅ wenn zu eng: horizontal scroll statt wrap
-            WebkitOverflowScrolling: "touch",
+            flexWrap: "nowrap", // ✅ Logout bleibt daneben
           }}
         >
           <NavLink to="/" style={({ isActive }) => baseLinkStyle(isActive)}>
@@ -78,7 +84,7 @@ export function TopBar() {
             + Neu
           </NavLink>
 
-          {/* Logout – klein & ruhig, bleibt in der Reihe */}
+          {/* Logout: klein, direkt daneben */}
           <button
             onClick={() => supabase.auth.signOut()}
             title="Abmelden"
@@ -91,7 +97,6 @@ export function TopBar() {
               color: "#374151",
               cursor: "pointer",
               whiteSpace: "nowrap",
-              flex: "0 0 auto",
             }}
           >
             Logout
