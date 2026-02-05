@@ -381,49 +381,58 @@ export default function Today() {
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
-          <div className="small">
-            {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>{" "}
-            (<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
-          </div>
+          {/* Überschrift + Tagesnotiz nebeneinander */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>Heute</div>
 
-          {/* Tagesnotiz */}
-          <div className="small" style={{ marginTop: 6 }}>
             {!editingDayNote ? (
               <span
-                style={{ color: "#6b7280", cursor: "pointer" }}
+                className="small"
+                style={{
+                  color: "#6b7280",
+                  cursor: "pointer",
+                  border: "1px dashed #cfd5df",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                }}
                 onClick={() => setEditingDayNote(true)}
-                title="Tag-Notiz bearbeiten"
+                title="Tagesnotiz bearbeiten"
               >
                 {dayNoteLoading
-                  ? "📝 lade Notiz…"
+                  ? "📝 lade…"
                   : dayNote
                   ? `📝 ${dayNote}`
-                  : "📝 Notiz für diesen Tag hinzufügen"}
+                  : "📝 Tagesnotiz hinzufügen"}
               </span>
             ) : (
-              <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <input
                   value={dayNote}
                   onChange={(e) => setDayNote(e.target.value)}
-                  placeholder="z.B. Hochzeit, Geburtstag, wenig Personal…"
-                  style={{ minWidth: 280 }}
+                  placeholder="z.B. Hochzeit, wenig Personal, Event…"
+                  style={{ minWidth: 260 }}
                 />
                 <button className="primary" onClick={saveDayNote} disabled={dayNoteLoading}>
                   Speichern
                 </button>
                 <button onClick={() => setEditingDayNote(false)} disabled={dayNoteLoading}>
-                  Abbrechen
+                  ✕
                 </button>
               </div>
             )}
-
-            {dayNoteErr && (
-              <span className="badge bad" style={{ marginLeft: 10 }}>
-                Notiz-Fehler: {dayNoteErr}
-              </span>
-            )}
           </div>
+
+          {/* Datum + Counter */}
+          <div className="small" style={{ marginTop: 4 }}>
+            {formatDateDE(day)} · Personen heute: <strong>{personsAll}</strong>{" "}
+            (<span className="kbd">Mittag</span> {personsLunch} / <span className="kbd">Abend</span> {personsDinner})
+          </div>
+
+          {dayNoteErr && (
+            <div className="badge bad" style={{ marginTop: 6 }}>
+              Notiz-Fehler: {dayNoteErr}
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
