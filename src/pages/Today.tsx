@@ -327,6 +327,8 @@ export default function Today() {
         </div>
 
         <div style={{ marginTop: 8 }}>
+		
+		<div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
@@ -374,6 +376,9 @@ export default function Today() {
               )}
             </tbody>
           </table>
+		  
+		  </div>
+		  
         </div>
       </div>
     );
@@ -611,7 +616,7 @@ export default function Today() {
         )}
 
         <hr />
-
+<div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
@@ -657,6 +662,7 @@ export default function Today() {
             )}
           </tbody>
         </table>
+	</div>	
       </Modal>
     </div>
   );

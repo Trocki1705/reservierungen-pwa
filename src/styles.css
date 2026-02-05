@@ -77,3 +77,54 @@ tr.row-cancelled {
 tr.row-arrived { background: #eefbf2; }
 tr.row-cancelled { background: #fde8e8; }
 
+/* ---------- iPad / Touch friendly ---------- */
+:root{
+  --pad: 16px;
+  --radius: 16px;
+}
+
+.card{
+  border-radius: var(--radius);
+}
+
+/* mehr Luft, größere Touch-Targets */
+input, select, textarea, button{
+  min-height: 44px;               /* iOS guideline */
+  font-size: 16px;                /* verhindert iOS zoom */
+}
+
+/* Rows: standard = 2 Spalten, aber flexibel */
+.row{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Portrait iPad: 1 Spalte */
+@media (max-width: 900px){
+  .row{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tabellen auf kleineren Breiten nicht zerquetschen */
+.table{
+  width: 100%;
+  border-collapse: collapse;
+}
+.table-wrap{
+  width: 100%;
+  overflow-x: auto;               /* nur Tabelle scrollt, nicht Seite */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Header/Topbar: sauber umbrechen */
+.topbar-inner{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+
