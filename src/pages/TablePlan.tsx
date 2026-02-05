@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAreas, fetchReservationsForAreaDay, fetchTables } from "../lib/api";
 import type { Area, ReservationWithJoins, TableRow } from "../lib/types";
-import { SERVICE_WINDOWS, formatDateDE, formatHHMM, timeOnDate } from "../lib/settings";
+import { formatDateDE, formatHHMM, timeOnDate } from "../lib/settings";
 import { useNavigate } from "react-router-dom";
 import { toDateInputValue, fromDateInputValue } from "../lib/settings";
 
@@ -14,7 +14,6 @@ export default function TablePlan() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState<string>("");
   const [day, setDay] = useState<Date>(() => new Date());
-  const [service, setService] = useState<string>("Abend");
 
   const [tables, setTables] = useState<TableRow[]>([]);
   const [res, setRes] = useState<ReservationWithJoins[]>([]);
@@ -50,9 +49,9 @@ export default function TablePlan() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [areaId, day]);
 
   const windowRange = useMemo(() => {
-    const win = SERVICE_WINDOWS.find(w => w.name === service) ?? SERVICE_WINDOWS[1];
-    return { start: timeOnDate(day, win.start), end: timeOnDate(day, win.end) };
-  }, [service, day]);
+    // Wir entfernen hier die Unterscheidung zwischen "Mittag" und "Abend" und nehmen den gesamten Tag
+    return { start: timeOnDate(day, "00:00"), end: timeOnDate(day, "23:59") };
+  }, [day]);
 
   const tableInfo = useMemo(() => {
     const now = new Date();
@@ -85,11 +84,10 @@ export default function TablePlan() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>Tischplan</div>
-          <div className="small">{formatDateDE(day)} · {service}</div>
+          <div className="small">{formatDateDE(day)}</div> {/* Hier keine Service-Auswahl mehr */}
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button onClick={() => setService("Mittag")} className={service === "Mittag" ? "primary" : ""}>Mittag</button>
-          <button onClick={() => setService("Abend")} className={service === "Abend" ? "primary" : ""}>Abend</button>
+          {/* Die Buttons für "Mittag" und "Abend" wurden entfernt */}
         </div>
       </div>
 
@@ -110,7 +108,10 @@ export default function TablePlan() {
             onChange={e => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
-        
+        <div>
+          <label className="small">Aktionen</label>
+          <button onClick={load} disabled={loading}>{loading ? "Lade…" : "Aktualisieren"}</button>
+        </div>
       </div>
 
       {err && <div style={{ marginTop: 12 }} className="badge bad">Fehler: {err}</div>}
