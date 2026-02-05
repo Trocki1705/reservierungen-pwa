@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { createReservationSafe, fetchAreas, rpcFindFreeTables } from "../lib/api";
+import {
+  createReservationSafe,
+  fetchAreas,
+  rpcFindFreeTables,
+} from "../lib/api";
 import type { Area, TableRow } from "../lib/types";
 import {
   BUFFER_MINUTES,
@@ -22,7 +26,7 @@ export default function NewReservation() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [guestName, setGuestName] = useState("");
   const [phone, setPhone] = useState("");
-  const [partySize, setPartySize] = useState(2);
+  const [partySize, setPartySize] = useState(2); // Default für PartySize
   const [notes, setNotes] = useState("");
   const [areaId, setAreaId] = useState<string>("");
   const [day, setDay] = useState<Date>(() => new Date());
@@ -163,16 +167,17 @@ export default function NewReservation() {
         </div>
       </div>
 
-      {/* Personen und Dauer */}
+      {/* Dropdown für Personen und Dauer */}
       <div className="row" style={{ marginTop: 12 }}>
         <div>
           <label className="small">Personen</label>
-          <input
-            type="number"
-            min={1}
-            value={partySize}
-            onChange={(e) => setPartySize(Math.max(1, Number(e.target.value || 1)))}
-          />
+          <select value={partySize} onChange={(e) => setPartySize(Number(e.target.value))}>
+            {[...Array(50).keys()].map((i) => (
+              <option key={i + 1} value={i + 1}>
+                {i + 1} {i + 1 === 1 ? "Person" : "Personen"}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="small">Dauer (Minuten)</label>
@@ -264,3 +269,4 @@ export default function NewReservation() {
     </div>
   );
 }
+
