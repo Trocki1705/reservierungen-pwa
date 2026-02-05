@@ -15,6 +15,7 @@ const baseLinkStyle = (isActive: boolean) => ({
 });
 
 export function TopBar() {
+	console.log("TopBar render");
   const navigate = useNavigate();
   const location = useLocation();
 

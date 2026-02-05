@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import AuthGate from "./components/AuthGate";
-import TopBar from "./components/TopBar";
+import { TopBar } from "./components/TopBar";
 
 import Today from "./pages/Today";
 import NewReservation from "./pages/NewReservation";
