@@ -143,4 +143,53 @@ button, input, select, textarea {
   padding-top: 10px;
   margin-top: 12px;
 }
+/* Container für den Date-Picker und Home-Button */
+.date-picker-container,
+.home-button-container {
+  width: 100%; /* Volle Breite */
+  height: 50px; /* Gleiche Höhe, je nach Bedarf anpassen */
+  color: white; /* Textfarbe auf weiß setzen, damit es lesbar bleibt */
+  display: flex;
+  align-items: right;
+  justify-content: center;
+  border-radius: 5px; /* Optional: für abgerundete Ecken */
+}
+
+/* Sicherstellen, dass die Schaltflächen die volle Breite nutzen */
+.date-picker,
+.home-button {
+  width: 100%;
+  height: 100%;
+  color: white;
+  border: none;
+  font-size: 26px; /* Schriftgröße nach Bedarf anpassen */
+}
+
+/* Auf kleineren Bildschirmen (wie iPad) sicherstellen, dass die Größe gleich bleibt */
+@media (max-width: 768px) {
+  .date-picker-container,
+  .home-button-container {
+    width: 100%; /* Sicherstellen, dass sie die volle Breite einnehmen */
+    height: 50px; /* Gleiche Höhe */
+  }
+}
+.time-blocks {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.time-block {
+  width: 48%; /* Oder 50% für gleiche Breite */
+  height: 300px; /* Passende Höhe je nach Bedarf */
+  background-color: #f0f0f0; /* Hintergrundfarbe */
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.time-block h3 {
+  text-align: center;
+  margin-bottom: 15px;
+}
 

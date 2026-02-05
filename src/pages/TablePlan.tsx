@@ -20,6 +20,7 @@ export default function TablePlan() {
   const [res, setRes] = useState<ReservationWithJoins[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [selectedTableReservations, setSelectedTableReservations] = useState<ReservationWithJoins[] | null>(null); // Für die angezeigten Reservierungen
 
   useEffect(() => {
     fetchAreas().then(a => {
@@ -73,6 +74,12 @@ export default function TablePlan() {
     return infos;
   }, [tables, res, windowRange.start, windowRange.end]);
 
+  const handleTableClick = (tableId: string) => {
+    // Beim Klicken auf einen Tisch werden alle Reservierungen für diesen Tisch angezeigt
+    const reservationsForTable = res.filter(r => r.table_id === tableId);
+    setSelectedTableReservations(reservationsForTable);
+  };
+
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
@@ -100,7 +107,7 @@ export default function TablePlan() {
           <input
             type="date"
             value={toDateInputValue(day)}
-			onChange={e => setDay(fromDateInputValue(e.target.value))}
+            onChange={e => setDay(fromDateInputValue(e.target.value))}
           />
         </div>
         <div>
@@ -124,9 +131,9 @@ export default function TablePlan() {
             <div
               key={t.id}
               className={cls}
-              onClick={() => nav(`/neu?areaId=${encodeURIComponent(areaId)}&tableId=${encodeURIComponent(t.id)}`)}
+              onClick={() => handleTableClick(t.id)} // Ändere dies, um die Reservierungen anzuzeigen
               style={{ cursor: "pointer" }}
-              title="Tippen: Neue Reservierung an diesem Tisch"
+              title="Tippen: Zeige Reservierungen für diesen Tisch"
             >
               <h3>Tisch {t.table_number}</h3>
               <div className="small">{t.seats} Plätze</div>
@@ -143,8 +150,22 @@ export default function TablePlan() {
         })}
       </div>
 
+      {/* Falls Reservierungen für einen Tisch angezeigt werden sollen */}
+      {selectedTableReservations && (
+        <div className="reservations-list">
+          <h3>Reservierungen für diesen Tisch:</h3>
+          <ul>
+            {selectedTableReservations.map((reservation) => (
+              <li key={reservation.id}>
+                {reservation.guest_name} - {formatHHMM(new Date(reservation.start_time))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="small" style={{ marginTop: 12 }}>
-        Tipp: Tippe einen Tisch, um eine neue Reservierung direkt für diesen Tisch zu starten.
+        Tipp: Tippe einen Tisch, um alle Reservierungen für diesen Tisch anzuzeigen.
       </div>
     </div>
   );
