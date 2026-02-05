@@ -1,4 +1,4 @@
-import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { supabase } from "../lib/api";
 
 const baseLinkStyle = (isActive: boolean) => ({
@@ -15,9 +15,6 @@ const baseLinkStyle = (isActive: boolean) => ({
 });
 
 export function TopBar() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
   return (
     <div className="topbar">
       <div
@@ -30,29 +27,27 @@ export function TopBar() {
           flexWrap: "wrap",
         }}
       >
+        {/* Titel */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link to="/" style={{ fontWeight: 900, textDecoration: "none", color: "#111" }}>
+          <Link
+            to="/"
+            style={{
+              fontWeight: 900,
+              fontSize: 18,
+              textDecoration: "none",
+              color: "#111",
+            }}
+          >
             Reservierungen
           </Link>
-          <span className="badge">iPad</span>
+          <span className="badge small">iPad</span>
         </div>
 
+        {/* Navigation + Logout (eine Ebene) */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          {/* HEUTE: immer ohne Query/Hash zurück */}
-          <a
-            href="/"
-            onClick={(e) => {
-              e.preventDefault();
-              if (location.pathname === "/" && (location.search || location.hash)) {
-                navigate({ pathname: "/", search: "", hash: "" }, { replace: true });
-              } else {
-                navigate({ pathname: "/", search: "", hash: "" });
-              }
-            }}
-            style={baseLinkStyle(location.pathname === "/" && !location.search && !location.hash)}
-          >
+          <NavLink to="/" style={({ isActive }) => baseLinkStyle(isActive)}>
             Heute
-          </a>
+          </NavLink>
 
           <NavLink to="/tables" style={({ isActive }) => baseLinkStyle(isActive)}>
             Tischplan
@@ -72,14 +67,14 @@ export function TopBar() {
             + Neu
           </NavLink>
 
-          {/* Logout klein */}
+          {/* Logout – klein & ruhig */}
           <button
             onClick={() => supabase.auth.signOut()}
             title="Abmelden"
             style={{
               fontSize: 12,
-              padding: "6px 10px",
-              borderRadius: 10,
+              padding: "8px 12px",
+              borderRadius: 12,
               border: "1px solid #e5e7eb",
               background: "#f9fafb",
               color: "#374151",
