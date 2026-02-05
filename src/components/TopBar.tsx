@@ -20,7 +20,7 @@ export function TopBar() {
 
   return (
     <div className="topbar">
-      <div className="topbar-inner">
+      <div className="topbar-inner" style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link to="/" style={{ fontWeight: 800, textDecoration: "none", color: "#111" }}>
             Reservierungen
@@ -28,13 +28,12 @@ export function TopBar() {
           <span className="badge">iPad PWA</span>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           {/* HEUTE: immer ohne Query/Hash zurück */}
           <a
             href="/"
             onClick={(e) => {
               e.preventDefault();
-              // navigiert IMMER sauber zurück auf "/" ohne ?open=...
               if (location.pathname === "/" && (location.search || location.hash)) {
                 navigate({ pathname: "/", search: "", hash: "" }, { replace: true });
               } else {
@@ -46,12 +45,14 @@ export function TopBar() {
             Reservierungen
           </a>
 
-          <NavLink to="/tische" style={({ isActive }) => baseLinkStyle(isActive)}>
+          {/* ✅ passend zu App.tsx */}
+          <NavLink to="/tables" style={({ isActive }) => baseLinkStyle(isActive)}>
             Tischplan
           </NavLink>
 
+          {/* ✅ passend zu App.tsx */}
           <NavLink
-            to="/neu"
+            to="/new"
             style={({ isActive }) => ({
               ...baseLinkStyle(isActive),
               fontSize: 18,
@@ -65,6 +66,21 @@ export function TopBar() {
           >
             + Neu
           </NavLink>
+
+          <button
+            onClick={() => supabase.auth.signOut()}
+            style={{
+              padding: "12px 16px",
+              borderRadius: 14,
+              border: "1px solid #cfd5df",
+              background: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+            title="Abmelden"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </div>
