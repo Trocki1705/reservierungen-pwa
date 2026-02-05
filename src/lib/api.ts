@@ -108,10 +108,15 @@ export async function createReservationSafe(input: {
 export async function updateReservation(
   id: string,
   patch: Partial<{
+    guest_name: string;
+    phone: string | null;
+    party_size: number;
+    start_time: string;
+    duration_minutes: number;
+    notes: string | null;
     status: string;
     table_id: string | null;
     area_id: string;
-    notes: string | null;
   }>
 ) {
   const { data, error } = await supabase
@@ -123,6 +128,11 @@ export async function updateReservation(
 
   if (error) throw error;
   return data;
+}
+
+export async function deleteReservation(id: string) {
+  const { error } = await supabase.from("reservations").delete().eq("id", id);
+  if (error) throw error;
 }
 
 import type { ReservationWithJoins } from "./types";

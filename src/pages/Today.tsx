@@ -4,6 +4,7 @@ import {
   fetchTodayReservations,
   fetchTables,
   updateReservation,
+  deleteReservation,
   searchReservationsByGuestName,
 } from "../lib/api";
 import type { Area, ReservationWithJoins, TableRow } from "../lib/types";
@@ -41,6 +42,23 @@ function inWindow(day: Date, isoStart: string, winName: string) {
   return st >= s && st <= e;
 }
 
+// datetime-local helpers (lokal, kein UTC shift)
+function toDateTimeLocalValue(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day}T${hh}:${mm}`;
+}
+function fromDateTimeLocalValue(v: string): Date {
+  // "YYYY-MM-DDTHH:mm"
+  const [datePart, timePart] = v.split("T");
+  const [y, m, d] = datePart.split("-").map(Number);
+  const [hh, mm] = timePart.split(":").map(Number);
+  return new Date(y, m - 1, d, hh, mm, 0, 0);
+}
+
 export default function Today() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState<string>("");
@@ -56,6 +74,13 @@ export default function Today() {
   const [openRow, setOpenRow] = useState<ReservationWithJoins | null>(null);
   const [areaTables, setAreaTables] = useState<TableRow[]>([]);
   const [editTableId, setEditTableId] = useState<string>("");
+
+  // Edit-Felder
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editParty, setEditParty] = useState(2);
+  const [editStartLocal, setEditStartLocal] = useState(""); // datetime-local string
+  const [editNotes, setEditNotes] = useState("");
 
   // Modal: Gast-Suche
   const [searchOpen, setSearchOpen] = useState(false);
@@ -114,6 +139,13 @@ export default function Today() {
     setOpenRow(r);
     setEditTableId(r.table_id ?? "");
 
+    // Editfelder füllen
+    setEditName(r.guest_name ?? "");
+    setEditPhone(r.phone ?? "");
+    setEditParty(r.party_size ?? 2);
+    setEditStartLocal(toDateTimeLocalValue(new Date(r.start_time)));
+    setEditNotes(r.notes ?? "");
+
     try {
       const t = await fetchTables(r.area_id);
       setAreaTables(t);
@@ -127,6 +159,12 @@ export default function Today() {
     setOpenRow(null);
     setAreaTables([]);
     setEditTableId("");
+
+    setEditName("");
+    setEditPhone("");
+    setEditParty(2);
+    setEditStartLocal("");
+    setEditNotes("");
   }
 
   async function setStatus(newStatus: ReservationWithJoins["status"]) {
@@ -136,6 +174,8 @@ export default function Today() {
       await updateReservation(openRow.id, { status: newStatus });
       await load();
       closeModal();
+    } catch (e: any) {
+      setErr(String(e?.message ?? e));
     } finally {
       setLoading(false);
     }
@@ -148,6 +188,51 @@ export default function Today() {
       await updateReservation(openRow.id, { table_id: editTableId || null });
       await load();
       closeModal();
+    } catch (e: any) {
+      setErr(String(e?.message ?? e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveEdits() {
+    if (!openRow) return;
+    const name = editName.trim();
+    if (!name) return setErr("Name darf nicht leer sein.");
+
+    setLoading(true);
+    setErr(null);
+    try {
+      const start = fromDateTimeLocalValue(editStartLocal);
+      await updateReservation(openRow.id, {
+        guest_name: name,
+        phone: editPhone.trim() ? editPhone.trim() : null,
+        party_size: Math.max(1, Number(editParty || 1)),
+        start_time: start.toISOString(),
+        notes: editNotes.trim() ? editNotes.trim() : null,
+      });
+      await load();
+      closeModal();
+    } catch (e: any) {
+      setErr(String(e?.message ?? e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function doDelete() {
+    if (!openRow) return;
+    const ok = window.confirm(`Reservierung wirklich löschen?\n\n${openRow.guest_name} · ${formatHHMM(new Date(openRow.start_time))}`);
+    if (!ok) return;
+
+    setLoading(true);
+    setErr(null);
+    try {
+      await deleteReservation(openRow.id);
+      await load();
+      closeModal();
+    } catch (e: any) {
+      setErr(String(e?.message ?? e));
     } finally {
       setLoading(false);
     }
@@ -176,9 +261,7 @@ export default function Today() {
             <tbody>
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="small">
-                    Keine Reservierungen.
-                  </td>
+                  <td colSpan={5} className="small">Keine Reservierungen.</td>
                 </tr>
               ) : (
                 data.map((r) => {
@@ -208,9 +291,7 @@ export default function Today() {
                       </td>
                       <td>{r.party_size}</td>
                       <td>{tableLabel}</td>
-                      <td>
-                        <span className={`badge ${b.cls}`}>{b.label}</span>
-                      </td>
+                      <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
                     </tr>
                   );
                 })
@@ -266,9 +347,7 @@ export default function Today() {
           <select value={areaId} onChange={(e) => setAreaId(e.target.value)}>
             <option value="">Alle</option>
             {areas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
+              <option key={a.id} value={a.id}>{a.name}</option>
             ))}
           </select>
         </div>
@@ -300,30 +379,68 @@ export default function Today() {
       >
         {!openRow ? null : (
           <>
-            <div className="small" style={{ marginBottom: 8 }}>
-              {formatHHMM(new Date(openRow.start_time))} · {openRow.party_size} Personen
+            {/* Schnelle Aktionen */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => setStatus("confirmed")} disabled={loading}>bestätigt</button>
+              <button className="primary" onClick={() => setStatus("arrived")} disabled={loading}>angekommen</button>
+              <button onClick={() => setStatus("cancelled")} disabled={loading}>storniert</button>
+              <button onClick={() => setStatus("no_show")} disabled={loading}>no-show</button>
             </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => setStatus("confirmed")} disabled={loading}>
-                bestätigt
+            <hr />
+
+            {/* Bearbeiten */}
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Bearbeiten</div>
+
+            <div className="row">
+              <div>
+                <label className="small">Name</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <label className="small">Telefon</label>
+                <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="row" style={{ marginTop: 12 }}>
+              <div>
+                <label className="small">Personen</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editParty}
+                  onChange={(e) => setEditParty(Math.max(1, Number(e.target.value || 1)))}
+                />
+              </div>
+              <div>
+                <label className="small">Datum/Uhrzeit</label>
+                <input
+                  type="datetime-local"
+                  value={editStartLocal}
+                  onChange={(e) => setEditStartLocal(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <label className="small">Notiz</label>
+              <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="primary" onClick={saveEdits} disabled={loading}>
+                Änderungen speichern
               </button>
-              <button className="primary" onClick={() => setStatus("arrived")} disabled={loading}>
-                angekommen
-              </button>
-              <button onClick={() => setStatus("cancelled")} disabled={loading}>
-                storniert
-              </button>
-              <button onClick={() => setStatus("no_show")} disabled={loading}>
-                no-show
+              <button onClick={doDelete} disabled={loading}>
+                Löschen
               </button>
             </div>
 
             <hr />
 
-            <div className="small" style={{ marginBottom: 8 }}>
-              Tisch festlegen / wechseln
-            </div>
+            {/* Tisch */}
+            <div className="small" style={{ marginBottom: 8 }}>Tisch festlegen / wechseln</div>
 
             <select value={editTableId} onChange={(e) => setEditTableId(e.target.value)}>
               <option value="">(ohne Tisch)</option>
@@ -339,7 +456,7 @@ export default function Today() {
                 Tisch speichern
               </button>
               <button onClick={closeModal} disabled={loading}>
-                Abbrechen
+                Schließen
               </button>
             </div>
           </>
@@ -390,9 +507,7 @@ export default function Today() {
           <tbody>
             {searchResults.length === 0 ? (
               <tr>
-                <td colSpan={6} className="small">
-                  Keine Ergebnisse (oder noch nicht gesucht).
-                </td>
+                <td colSpan={6} className="small">Keine Ergebnisse (oder noch nicht gesucht).</td>
               </tr>
             ) : (
               searchResults.map((r) => {
@@ -428,7 +543,7 @@ export default function Today() {
         </table>
 
         <div className="small" style={{ marginTop: 8 }}>
-          Tipp: Tippe auf ein Ergebnis, um es direkt zu öffnen (Status/Tisch ändern).
+          Tipp: Tippe auf ein Ergebnis, um es direkt zu bearbeiten (Name/Uhrzeit/Löschen).
         </div>
       </Modal>
     </div>
