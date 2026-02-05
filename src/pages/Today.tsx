@@ -512,8 +512,8 @@ export default function Today() {
           <>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button onClick={() => setStatus("confirmed")} disabled={loading}>bestätigt</button>
-              <button className="primary" onClick={() => setStatus("arrived")} disabled={loading}>angekommen</button>
-              <button onClick={() => setStatus("cancelled")} disabled={loading}>storniert</button>
+              <button className="green" onClick={() => setStatus("arrived")} disabled={loading}>angekommen</button>
+              <button className="red" onClick={() => setStatus("cancelled")} disabled={loading}>storniert</button>
               <button onClick={() => setStatus("no_show")} disabled={loading}>no-show</button>
             </div>
 

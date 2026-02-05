@@ -22,6 +22,8 @@ input, select, textarea, button {
 textarea { min-height: 90px; resize: vertical; }
 button { cursor: pointer; border: 1px solid #cfd5df; background: #fff; }
 button.primary { background: #111; color: white; border-color: #111; }
+button.red { background: red; color: black; border-color: #111; }
+button.green { background: #33cc33; color: black; border-color: #111; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .topbar {
   position: sticky; top: 0;
