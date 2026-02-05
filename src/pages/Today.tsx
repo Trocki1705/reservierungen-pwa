@@ -477,14 +477,18 @@ export default function Today() {
         <div>
           <label className="small">Datum</label>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input
-              type="date"
-              value={toDateInputValue(day)}
-              onChange={(e) => setDay(fromDateInputValue(e.target.value))}
-            />
-            <button type="button" onClick={goToday} style={{ padding: "12px 14px", borderRadius: 12 }}>
-              Heute
-            </button>
+			<div class="date-picker-container">
+				<input
+				  type="date"
+				  value={toDateInputValue(day)}
+				  onChange={(e) => setDay(fromDateInputValue(e.target.value))}
+				/>
+			</div>
+			<div class="home-button-container">
+					<button type="button" onClick={goToday} style={{ padding: "12px 14px", borderRadius: 12 }}>
+					  Heute
+					</button>
+			</div>
           </div>
         </div>
       </div>
