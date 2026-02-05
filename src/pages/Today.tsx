@@ -276,7 +276,73 @@ export default function Today() {
       setLoading(false);
     }
   }
+  function ReservationsTable(props: { title: string; data: ReservationWithJoins[] }) {
+    const { title, data } = props;
 
+    return (
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{title}</div>
+          <span className="badge">{data.length} Reservierungen</span>
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+		
+		<div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>Zeit</th>
+                <th>Name</th>
+                <th style={{ width: 90 }}>Pers.</th>
+                <th style={{ width: 170 }}>Tisch</th>
+                <th style={{ width: 120 }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="small">Keine Reservierungen.</td>
+                </tr>
+              ) : (
+                data.map((r) => {
+                  const b = statusBadge(r.status);
+                  const tableLabel = r.table
+                    ? `Tisch ${r.table.table_number} · ${r.area?.name ?? ""}`
+                    : "—";
+
+                  const rowClass =
+                    r.status === "arrived"
+                      ? "row-arrived"
+                      : r.status === "cancelled"
+                      ? "row-cancelled"
+                      : "";
+
+                  return (
+                    <tr
+                      key={r.id}
+                      className={rowClass}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => openReservation(r)}
+                    >
+                      <td>{formatHHMM(new Date(r.start_time))}</td>
+                      <td><NameCell r={r} /></td>
+                      <td>{r.party_size}</td>
+                      <td>{tableLabel}</td>
+                      <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+		  
+		  </div>
+		  
+        </div>
+      </div>
+    );
+  }
   async function doDelete() {
     if (!openRow) return;
     const ok = window.confirm(
