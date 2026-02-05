@@ -19,7 +19,22 @@ export function TopBar() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <NavLink to="/" style={({isActive}) => linkStyle(isActive)}>Heute</NavLink>
           <NavLink to="/tische" style={({isActive}) => linkStyle(isActive)}>Tischplan</NavLink>
-          <NavLink to="/neu" style={({isActive}) => linkStyle(isActive)}>+ Neu</NavLink>
+          <NavLink
+  to="/neu"
+  style={({ isActive }) => ({
+    ...linkStyle(isActive),
+    fontSize: 18,
+    fontWeight: 900,
+    padding: "14px 22px",
+    borderRadius: 16,
+    background: isActive ? "#1d4ed8" : "#2563eb",
+    color: "#fff",
+    border: "1px solid #1d4ed8",
+    boxShadow: "0 6px 16px rgba(0,0,0,0.25)"
+  })}
+>
+  + Neu
+</NavLink>
         </div>
       </div>
     </div>
