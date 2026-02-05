@@ -39,8 +39,8 @@ export default function TablePlan() {
     try {
       // Wenn "all" ausgewählt ist, holen wir alle Bereiche
       const [t, r] = await Promise.all([
-        fetchTables(areaId === "all" ? "" : areaId), // Leeres String für alle Bereiche
-        fetchReservationsForAreaDay({ day, areaId: areaId === "all" ? "" : areaId }) // Leeres String für alle Bereiche
+        fetchTables(areaId === "all" ? null : areaId), // null für alle Bereiche, nicht ein leerer String
+        fetchReservationsForAreaDay({ day, areaId: areaId === "all" ? null : areaId }) // null für alle Bereiche
       ]);
       setTables(t);
       setRes(r.filter(x => !!x.table_id));
